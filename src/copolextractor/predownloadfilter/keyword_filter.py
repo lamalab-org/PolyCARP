@@ -1,0 +1,188 @@
+import json
+import os
+from collections import Counter
+from typing import Dict, List, Union
+
+import pandas as pd
+from bs4 import BeautifulSoup
+from selenium import webdriver
+
+import copolextractor.utils as utils
+
+
+def fetch_journals(output_journal_file: str) -> List[str]:
+    """Load the supported-journal list from a JSON file, or scrape and cache it.
+
+    If `output_journal_file` already exists, its contents are loaded and returned
+    directly. Otherwise, journal names are scraped from the ChemSearch supported
+    journals page and saved to `output_journal_file`.
+
+    Args:
+        output_journal_file: Path to the cached journal-list JSON file (read if it
+            exists, written to after scraping otherwise).
+
+    Returns:
+        The list of journal names.
+    """
+    if output_journal_file:
+        with open(output_journal_file, "r") as f:
+            journal_list = json.load(f)
+            return journal_list
+
+    """Fetch journal names from the website and save to a JSON file."""
+    driver = webdriver.Chrome()
+    url = "https://chemsearch.kovsky.net/supported_journals.php"
+    driver.get(url)
+
+    # Parse the HTML with BeautifulSoup
+    soup = BeautifulSoup(driver.page_source, "html.parser")
+    driver.quit()
+
+    # Extract journal names
+    journals = []
+    for row in soup.find_all("tr"):
+        cols = row.find_all("td")
+        if cols:  # Check if <td> tags exist in the row
+            journal_name = cols[0].get_text(strip=True)
+            journals.append(journal_name)
+
+    # Save to JSON
+    with open(output_journal_file, "w") as f:
+        json.dump(journals, f, indent=2)
+    print(f"Journals saved to {output_journal_file}.")
+
+
+def calculate_score(entry: dict, journal_list: List[str], keywords: Dict[str, int]) -> dict:
+    """Calculate the score for a given paper.
+
+    Args:
+        entry: Paper metadata dict, updated in place with a "Score" key. Should
+            contain "Journal", "Title" and/or "Abstract" keys where available.
+        journal_list: Supported journal names; +40 points if `entry["Journal"]`
+            contains any of them (case-insensitive substring match).
+        keywords: Mapping of keyword to point weight; each keyword found in the
+            title+abstract text (case-insensitive) adds its weight to the score.
+
+    Returns:
+        The same `entry` dict, with "Score" set.
+    """
+    score = 0
+
+    # Check if 'Journal' key exists and if journal is in the list
+    if "Journal" in entry:
+        journal_in_list = any(
+            journal.lower() in entry["Journal"].lower() for journal in journal_list
+        )
+        if journal_in_list:
+            score += 40
+
+    # Check for weighted keywords in title and abstract
+    title_abstract = entry.get("Title", "") + " " + entry.get("Abstract", "")
+    for word, weight in keywords.items():
+        if word.lower() in title_abstract.lower():
+            score += weight
+
+    entry["Score"] = score
+    return entry
+
+
+def process_papers(
+    input_file: str,
+    journal_file: str,
+    keywords: Dict[str, int],
+    output_file: str,
+    existing_doi_csv: Union[str, None],
+) -> None:
+    """Process papers, calculate scores, and save results to a JSON file.
+
+    Args:
+        input_file: Path to the JSON file with paper metadata ("DOI", "Title",
+            "Abstract", "Journal", ...).
+        journal_file: Path to the supported-journal list JSON file.
+        keywords: Mapping of keyword to point weight, passed to `calculate_score`.
+        output_file: Destination path for the scored papers JSON file.
+        existing_doi_csv: Optional path to a CSV with an "original_source" column
+            of already-extracted DOIs; matching papers are skipped from scoring.
+    """
+    # Load journals
+    with open(journal_file, "r") as f:
+        journal_list = json.load(f)
+
+    # Load papers
+    with open(input_file, "r") as f:
+        data = json.load(f)
+
+    # Load existing DOIs from CSV file
+    existing_dois = set()
+    if existing_doi_csv:
+        try:
+            df = pd.read_csv(existing_doi_csv)
+            if "original_source" in df.columns:
+                existing_dois = set(df["original_source"].dropna().tolist())
+        except Exception as e:
+            print(f"Warning: Could not load existing DOIs from CSV: {e}")
+
+    # Process DOIs and mark existing entries
+    for entry in data:
+        if "DOI" in entry:
+            processed_doi = utils.sanitize_filename(entry["DOI"]).rstrip(".json")
+            # Check if DOI exists in the list from CSV
+            if processed_doi in existing_dois:
+                entry["already_extracted"] = True
+            else:
+                entry["already_extracted"] = False
+
+    # Process only entries that haven't been extracted yet
+    scored_data = [
+        calculate_score(entry, journal_list, keywords)
+        for entry in data
+        if not entry.get("already_extracted", False)
+    ]
+
+    # Sort by score and get top 50
+    top_50_papers = sorted(scored_data, key=lambda x: x["Score"], reverse=True)[:50]
+
+    # Print top 50 papers with title and score
+    print("\nTop 50 papers by score:")
+    for paper in top_50_papers:
+        print(f"Title: {paper['Title']}, Score: {paper['Score']}")
+
+    # Print score distribution
+    score_counts = Counter(entry["Score"] for entry in scored_data)
+    print("\nScore distribution:")
+    for score, count in sorted(score_counts.items(), reverse=True):
+        print(f"Score {score}: {count} papers")
+
+    print("Total number of papers processed:", len(scored_data))
+    print(
+        "Total number of papers skipped (already extracted):",
+        len([e for e in data if e.get("already_extracted", False)]),
+    )
+
+    # Save the updated data to a new JSON file
+    with open(output_file, "w") as f:
+        json.dump(scored_data, f, indent=2)
+    print(f"Scored papers saved to {output_file}.")
+
+
+def main(
+    input_file: str,
+    journal_file: str,
+    keywords: Dict[str, int],
+    output_file: str,
+    existing_doi_csv: Union[str, None],
+) -> None:
+    """Fetch the supported-journal list and score candidate papers by keyword/journal match.
+
+    Args:
+        input_file: Path to the JSON file with paper metadata.
+        journal_file: Path to the supported-journal list JSON file (created if missing).
+        keywords: Mapping of keyword to point weight, passed to `calculate_score`.
+        output_file: Destination path for the scored papers JSON file.
+        existing_doi_csv: Optional path to a CSV of already-extracted DOIs to skip.
+    """
+    # Step 1: Fetch journals and save to a JSON file
+    fetch_journals(journal_file)
+
+    # Step 2: Process papers and calculate scores
+    process_papers(input_file, journal_file, keywords, output_file, existing_doi_csv)

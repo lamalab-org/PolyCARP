@@ -1,0 +1,84 @@
+# See https://setuptools.readthedocs.io/en/latest/build_meta.html
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "copolymer-reactivity"
+version = "0.1.0"
+requires-python = ">=3.11"
+# Core deps needed for inference-only use of `copolpredictor` (i.e. the API).
+# Heavier training/visualization/extraction stacks live in optional extras.
+dependencies = [
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "xgboost",
+    "joblib",
+    "rdkit",
+    "requests",
+]
+
+[project.optional-dependencies]
+# Plotting / evaluation stack: only needed for training notebooks and
+# experiment scripts, not for inference.
+training = [
+    "matplotlib",
+    "pyyaml",
+]
+# Heavy data-extraction / LLM stack: only needed for the offline pipelines
+# under data_extraction/ and src/copolextractor/, NOT for the API.
+extraction = [
+    "openai",
+    "anthropic",
+    "crossrefapi",
+    "pdf2image",
+    "pytesseract",
+    "opencv-python",
+    "Pillow",
+    "imutils",
+    "selenium",
+    "beautifulsoup4",
+    "thefuzz",
+    "pint",
+    "pubchempy",
+    "diskcache",
+    "backoff",
+    "pyyaml",
+    "python-dotenv",
+]
+database = [
+    "nomad-polymerization-reactions>=1.0.0",
+]
+testing = [
+    "pytest>=7.0",
+    "pytest-cov",
+    # Needed by tests/test_api_parity.py — TestClient uses httpx.
+    "fastapi>=0.104.0",
+    "httpx>=0.25",
+    # The legacy tests under tests/ import copolextractor.utils and
+    # copolextractor.analyzer, which pull in backoff/pubchempy/openai/
+    # thefuzz/pint at module load time. Without these, pytest can't even
+    # collect those modules and the run fails with ModuleNotFoundError.
+    "backoff",
+    "pubchempy",
+    "diskcache",
+    "pyyaml",
+    "openai",
+    "thefuzz",
+    "pint",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311", "py312", "py313"]
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 100
+include_trailing_comma = true
+reverse_relative = true

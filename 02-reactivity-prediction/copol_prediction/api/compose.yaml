@@ -1,0 +1,53 @@
+services:
+  copol-prediction-api:
+    # Use the pre-built image from GitHub Container Registry.
+    # To build locally instead, comment out 'image' and uncomment 'build'.
+    image: ghcr.io/lamalab-org/copolymer-reactivity:latest
+    # build:
+    #   context: ../../..
+    #   dockerfile: 02-reactivity-prediction/copol_prediction/api/Dockerfile
+    container_name: copol-prediction-api
+    ports:
+      - "8000:8000"
+    environment:
+      # Model configuration
+      - MODEL_PATH=/app/artifacts/model_bundle
+      # Dataset configuration (for DOI checking)
+      - DATASET_PATH=/app/processed_data.csv
+      # Baseline-lookup pool
+      - TRAIN_DATA_PATH=/app/artifacts/data_splits/train.csv
+      - NEGATIVE_DATA_PATH=/app/artificial_datapoints.csv
+      # Python settings
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=info
+      - CACHE_DIR=/app/cache
+      # XTB configuration (for quantum chemistry calculations via xtb-python)
+      - OMP_NUM_THREADS=1
+      - OMP_STACKSIZE=1G
+      - OMP_MAX_ACTIVE_LEVELS=1
+    volumes:
+      # Mount cache directory for persistence across container restarts
+      - ./cache:/app/cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "conda", "run", "-n", "copol", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Resource limits - sufficient for XTB quantum chemistry calculations
+    # XTB calculations can be memory intensive
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 6G
+        reservations:
+          cpus: '1'
+          memory: 3G
+    networks:
+      - copol-network
+
+networks:
+  copol-network:
+    driver: bridge

@@ -1,0 +1,386 @@
+import hashlib
+import json
+import os
+import re
+from pathlib import Path
+from typing import Any, Union
+
+import backoff
+import diskcache as dc
+import numpy as np
+import pandas as pd
+import pubchempy as pcp
+import requests
+import yaml
+from openai import OpenAI
+from rdkit import Chem
+from rdkit.Chem import Descriptors
+
+# Global embedding cache
+embedding_cache = {}
+
+
+def load_yaml(file_path: Union[str, Path]) -> dict:
+    """Load a YAML file from disk.
+
+    Args:
+        file_path: Path to the YAML file.
+
+    Returns:
+        The parsed YAML content.
+    """
+    with open(file_path, "r") as file:
+        data = yaml.safe_load(file)
+    return data
+
+
+def load_json(file_path: Union[str, os.PathLike]) -> Any:
+    """Load a JSON file from disk.
+
+    Args:
+        file_path: Path to the JSON file.
+
+    Returns:
+        The parsed JSON content (typically a dict or list, depending on the file).
+    """
+    with open(file_path, "r") as file:
+        data = json.load(file)
+    return data
+
+
+def save_json(data: object, file_path: Union[str, os.PathLike]) -> None:
+    """
+    Save JSON data to a file.
+
+    Args:
+        data: JSON-serializable object to save.
+        file_path: Destination path for the JSON file.
+    """
+    with open(file_path, "w") as file:
+        json.dump(data, file, indent=4)
+
+
+def sanitize_filename(filename: str) -> str:
+    """Replace invalid characters in filename with underscores.
+
+    Args:
+        filename: Raw filename or path segment.
+
+    Returns:
+        The filename with characters invalid on common filesystems (< > : " / \\ | ? *)
+        replaced by underscores.
+    """
+    return re.sub(r'[<>:"/\\|?*]', "_", filename)
+
+
+def calculate_logP(smiles: str) -> Union[float, None]:
+    """
+    Calculate the logP value for a given SMILES string.
+
+    Args:
+        smiles: SMILES string of the molecule.
+
+    Returns:
+        The calculated logP (octanol-water partition coefficient), or None if the
+        SMILES string could not be parsed or an error occurred.
+    """
+    try:
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is not None:
+            logP = Descriptors.MolLogP(mol)
+            return logP
+        else:
+            print(f"Conversion failed for SMILES: {smiles}")
+            return None
+    except Exception as e:
+        print(f"Error processing SMILES: {smiles} with error {e}")
+        return None
+
+
+CACTUS = "https://cactus.nci.nih.gov/chemical/structure/{0}/{1}"
+
+
+def canonicalize_smiles(smiles: str) -> str:
+    """Canonicalize smiles using RDKit"""
+    mol = Chem.MolFromSmiles(smiles)
+    return Chem.MolToSmiles(mol)
+
+
+@backoff.on_exception(backoff.expo, requests.exceptions.RequestException, max_time=10)
+def cactus_request_w_backoff(inp: str, rep: str = "SMILES") -> Union[str, None]:
+    """Query the CACTUS chemical structure resolver, retrying with exponential backoff.
+
+    Args:
+        inp: Input identifier to resolve (e.g. a chemical name or SMILES string).
+        rep: Output representation to request from CACTUS (e.g. "SMILES", "name").
+
+    Returns:
+        The resolved value as returned by CACTUS, or None if CACTUS returned an
+        HTML (error) page instead of the requested representation.
+    """
+    url = CACTUS.format(inp, rep)
+    response = requests.get(url, allow_redirects=True, timeout=5)
+    response.raise_for_status()
+    resp = response.text
+    if "html" in resp:
+        return None
+    return resp
+
+
+# Determine cache directory: use environment variable if set, otherwise use local cache directory
+# Try to find project root by navigating up from this file (src/copolextractor/utils.py)
+if "CACHE_DIR" in os.environ:
+    CACHE_DIR = os.environ["CACHE_DIR"]
+else:
+    # Navigate up from src/copolextractor/utils.py to project root
+    current_path = Path(__file__).resolve()
+    project_root = current_path.parent.parent.parent
+    cache_path = project_root / "cache"
+    CACHE_DIR = str(cache_path)
+
+os.makedirs(CACHE_DIR, exist_ok=True)
+cache = dc.Cache(CACHE_DIR)
+
+
+def name_to_smiles(name: str, force_retry: bool = True) -> str:
+    """Use the chemical name resolver https://cactus.nci.nih.gov/chemical/structure.
+    If this does not work, use pubchem.
+
+    Args:
+        name: Chemical name to convert
+        force_retry: If True, attempts online lookup for None values.
+                    If False, uses only cached values.
+    """
+    cache_key = f"name_to_smiles_{name}"
+
+    # Get from cache
+    cached_value = cache.get(cache_key)
+
+    # If we have a cached value and we're not force retrying, return it
+    # (even if it's None)
+    if not force_retry:
+        return cached_value
+
+    # Only proceed with conversion if we're force retrying and the cached value is None
+    if cached_value is None:
+        try:
+            smiles = cactus_request_w_backoff(name, rep="SMILES")
+            if smiles is None:
+                raise Exception
+            result = canonicalize_smiles(smiles)
+        except Exception:
+            try:
+                compound = pcp.get_compounds(name, "name")
+                result = canonicalize_smiles(compound[0].canonical_smiles)
+            except Exception:
+                result = None
+
+        # Cache the result
+        cache.set(cache_key, result)
+        return result
+
+    return cached_value
+
+
+@cache.memoize()
+def smiles_to_name(smiles: str) -> str:
+    """Convert SMILES to a chemical name using CACTUS and PubChem as fallback."""
+    canonical_smiles = canonicalize_smiles(smiles)
+    try:
+        # First try with CACTUS
+        name = cactus_request_w_backoff_name(canonical_smiles, rep="name")
+        if name is not None:
+            return name.strip()
+    except Exception:
+        pass
+
+    # If CACTUS fails, try with PubChem
+    try:
+        compound = pcp.get_compounds(canonical_smiles, "smiles")
+        if compound:
+            return compound[0].iupac_name
+    except Exception:
+        pass
+
+    return None
+
+
+def cactus_request_w_backoff_name(smiles: str, rep: str = "name") -> Union[str, None]:
+    """Query the CACTUS chemical structure resolver to convert a SMILES string to a name.
+
+    Args:
+        smiles: SMILES string to resolve.
+        rep: Output representation to request from CACTUS (defaults to "name").
+
+    Returns:
+        The resolved value as returned by CACTUS, or None if CACTUS returned an
+        HTML (error) page instead of the requested representation.
+    """
+    url = CACTUS.format(smiles, rep)
+    response = requests.get(url, allow_redirects=True, timeout=10)
+    response.raise_for_status()
+    resp = response.text
+    if "html" in resp:
+        return None
+    return resp
+
+
+# Initialize OpenAI client
+try:
+    client = OpenAI()
+except Exception as e:
+    print(f"Warning: Could not initialize OpenAI client: {e}")
+    print("Will use hash-based embeddings instead.")
+    client = None
+
+
+def load_embeddings(file_path: Union[str, Path] = "embeddings.json") -> dict:
+    """Load embeddings from a JSON file if it exists, populating the global cache.
+
+    Args:
+        file_path: Path to a JSON file containing a list of {"name", "embedding"} entries.
+
+    Returns:
+        A dict mapping name to embedding vector. Empty if `file_path` does not exist.
+    """
+    global embedding_cache
+
+    if os.path.exists(file_path):
+        with open(file_path, "r") as file:
+            embeddings = json.load(file)
+            print(f"Loaded {len(embeddings)} embeddings from {file_path}.")
+            embedding_cache = {item["name"]: item["embedding"] for item in embeddings}
+            return embedding_cache
+    return {}
+
+
+def save_embeddings(embeddings_dict: dict, file_path: Union[str, Path] = "output_2/embeddings.json") -> None:
+    """Save embeddings to a JSON file.
+
+    Args:
+        embeddings_dict: Mapping of name to embedding vector.
+        file_path: Destination path for the JSON file; parent directories are created
+            if needed.
+    """
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    embeddings_list = [
+        {"name": name, "embedding": embedding} for name, embedding in embeddings_dict.items()
+    ]
+    with open(file_path, "w") as file:
+        json.dump(embeddings_list, file, indent=4)
+    print(f"Saved {len(embeddings_list)} embeddings to {file_path}.")
+
+
+def get_or_create_embedding(text: Union[str, None], model: str = "text-embedding-3-small") -> Union[list, None]:
+    """
+    Retrieve embeddings for a given text.
+    Uses cache if available, otherwise generates new embeddings.
+
+    Args:
+        text: Text to embed. If None/NaN, no embedding is generated.
+        model: OpenAI embedding model name to use when the API is available.
+
+    Returns:
+        The embedding vector as a list of floats, or None if `text` is None/NaN or
+        embedding generation failed. Falls back to a deterministic hash-based
+        pseudo-embedding when no OpenAI client is available.
+    """
+    global embedding_cache
+    global client
+
+    # Handle None or NaN text inputs
+    if text is None or pd.isna(text):
+        print("Warning: Found None or NaN in text, skipping embedding.")
+        return None
+
+    # Clean the text by removing newlines for consistency
+    text_cleaned = text.replace("\n", " ")
+
+    # Check if the embedding already exists in the cache
+    if text_cleaned in embedding_cache:
+        return embedding_cache[text_cleaned]
+
+    # If OpenAI client is not available, use a hash-based embedding
+    if client is None:
+        print(f"Using hash-based embedding for: {text_cleaned}")
+        hash_val = int(hashlib.md5(text_cleaned.encode()).hexdigest(), 16)
+        np.random.seed(hash_val % 2**32)
+        hash_embedding = np.random.normal(0, 1, 1536).tolist()
+        embedding_cache[text_cleaned] = hash_embedding
+        return hash_embedding
+
+    try:
+        # Generate the embedding using the OpenAI API
+        response = client.embeddings.create(input=[text_cleaned], model=model)
+        embedding = response.data[0].embedding
+
+        # Store the new embedding in the cache
+        embedding_cache[text_cleaned] = embedding
+
+        print("Embedding: ", embedding)
+        return embedding
+    except Exception as e:
+        print(f"Error getting embedding for '{text_cleaned}': {e}")
+        return None
+
+
+def is_within_deviation(actual_product: float, expected_product: float, deviation: float = 0.10) -> bool:
+    """Check if product is within acceptable deviation.
+
+    Args:
+        actual_product: Observed value.
+        expected_product: Reference value to compare against.
+        deviation: Maximum allowed relative deviation (fraction of `expected_product`).
+
+    Returns:
+        True if `actual_product` is within `deviation` of `expected_product` (exact
+        equality required when `expected_product` is 0).
+    """
+    if expected_product == 0:
+        return actual_product == 0
+    return abs(actual_product - expected_product) / abs(expected_product) <= deviation
+
+
+# Load embeddings when the module is imported
+load_embeddings()
+
+
+# List of radical polymerization types
+RADICAL_TYPES = [
+    "free radical",
+    "Free radical",
+    "Free Radical",
+    "atom transfer radical polymerization",
+    "atom transfer radical",
+    "atom-transfer radical polymerization",
+    "nickel-mediated radical",
+    "bulk",
+    "Radical",
+    "radical",
+    "radical-anionic",
+    "controlled radical",
+    "radical-cationic",
+    "controlled/living polymerization",
+    "controlled/living radical",
+    "conventional radical polymerization",
+    "reversible deactivation radical polymerization",
+    "RAFT",
+    "reversible addition fragmentation chain transfer",
+    "reversible addition-fragmentation chain transfer polymerization",
+    "reversible addition-fragmentation chain transfer",
+    "Homogeneous Radical",
+    "Radiation-induced",
+    "radiation-induced",
+    "Radiation-Initiated",
+    "photo-induced polymerization",
+    "photopolymerization",
+    "thermal polymerization",
+    "thermal",
+    "group transfer polymerization",
+    "grafting",
+    "group transfer",
+    "Emulsion",
+    "Homogeneous Radical",
+    "semicontinuous emulsion",
+    "emulsion",
+]

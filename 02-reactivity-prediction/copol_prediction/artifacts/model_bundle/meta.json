@@ -1,0 +1,65 @@
+{
+  "created_at": "2026-04-28T08:21:57.382754Z",
+  "feature_columns": [
+    "charges_min_1",
+    "fukui_electrophilicity_min_1",
+    "fukui_electrophilicity_max_1",
+    "fukui_nucleophilicity_min_1",
+    "fukui_radical_min_1",
+    "homo_1",
+    "charges_min_2",
+    "fukui_electrophilicity_min_2",
+    "fukui_electrophilicity_max_2",
+    "fukui_nucleophilicity_min_2",
+    "fukui_radical_min_2",
+    "homo_2",
+    "delta_HOMO_LUMO_AB",
+    "delta_HOMO_LUMO_BA",
+    "temperature",
+    "polytype_emb_1",
+    "polytype_emb_2",
+    "solvent_logp",
+    "solvent_FractionCSP3"
+  ],
+  "class_labels": [
+    0,
+    1,
+    2
+  ],
+  "task": "multiclass_r_product_class",
+  "n_features": 19,
+  "n_classes": 3,
+  "best_params": {
+    "subsample": 0.85,
+    "reg_lambda": 2.0,
+    "reg_alpha": 0.3,
+    "n_estimators": 500,
+    "min_child_weight": 2,
+    "max_depth": 6,
+    "learning_rate": 0.06,
+    "gamma": 0.3,
+    "colsample_bytree": 0.9
+  },
+  "cv_score": 0.722763221541888,
+  "holdout_accuracy": 0.740058910162003,
+  "holdout_f1_weighted": 0.7400541146291648,
+  "holdout_f1_macro": 0.7081962224497858,
+  "class_weights": {
+    "0": 6.8667,
+    "1": 0.7727,
+    "2": 0.641
+  },
+  "training_config": {
+    "augmentation_used": false,
+    "augmentation_samples": 5,
+    "negative_data_used": false,
+    "specialized_removed_from_training": false,
+    "specialized_removed_from_test": false,
+    "cv_prune_100_path": "/Users/maraw/PycharmProjects/test/experiments/cv_pruning/results_val_full/ids_error_ge_100pct_enriched.csv",
+    "used_central_split": true,
+    "random_state": 42,
+    "calibration_method": "isotonic",
+    "calibration_fitted_on": "validation_voting_subset",
+    "calibration_file": "calibration.joblib"
+  }
+}

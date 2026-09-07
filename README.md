@@ -1,1 +1,155 @@
 # PolyCARP
+
+A condition-aware machine-learning model and FastAPI service that predicts the **microstructure of radical copolymers** — *alternating*, *random*, or *gradient* — from two monomer structures and the reaction conditions (solvent, temperature, polymerisation mechanism), backed by a curated literature dataset of **3,791 copolymerisations from 1,206 publications**.
+
+The model is served live at <https://polycarp.cheminfo.org> (web UI: [cheminfo-py/polycarp.cheminfo.org](https://github.com/cheminfo-py/polycarp.cheminfo.org)).
+
+## The pipelines
+
+This repo contains **two main pipelines** that produce the dataset, the model, and the deployed service. The diagram below is the conceptual map you'll want to keep in mind when navigating the tree.
+
+```
+                                    ┌─────────────────────────────────────────┐
+                                    │ Pipeline 1 — literature → reactions     │   01-data-extraction/
+                                    │                                         │
+                  Crossref          │   1. score & filter (~300k → 1,851)     │
+                  abstract          │   2. embedding-based pre-filter         │
+                   →                │   3. download PDFs                      │
+                                    │   4. vision-language model extraction   │
+                                    │   5. curate + assign reaction_id        │
+                                    │                                         │
+                                    └─────────────────┬───────────────────────┘
+                                                      ▼
+                                          processed_data.csv
+                                          ── 3,791 unique reactions
+                                          ── 1,206 source publications
+                                          ── 4,969 measurement rows
+                                                      │
+                                    ┌─────────────────┴───────────────────────┐
+                                    │ Pipeline 2 — reactions → model + API    │   02-reactivity-prediction/copol_prediction/
+                                    │                                         │
+                                    │   1. XTB descriptors per monomer        │
+                                    │   2. monomer-pair-stratified splits     │
+                                    │   3. XGBoost training + calibration     │
+                                    │   4. voting layer (model + lookup)      │
+                                    │   5. FastAPI service                    │
+                                    │                                         │
+                                    └────────┬────────────────┬───────────────┘
+                                             ▼                ▼
+                                    artifacts/model_bundle    api/  ──→  https://polycarp.cheminfo.org
+```
+
+The **dataset** (`processed_data.csv`) is the hand-off point between the two pipelines. Everything upstream produces it; everything downstream consumes it.
+
+## Where things live
+
+| Path | What it is | README |
+|---|---|---|
+| [`01-data-extraction/`](01-data-extraction/) | Pipeline 1 — Crossref → VLM extraction → curated reactions | [README](01-data-extraction/README.md) |
+| [`02-reactivity-prediction/copol_prediction/`](02-reactivity-prediction/copol_prediction/) | Pipeline 2 — descriptors, splits, training, analysis, deployed API | [README](02-reactivity-prediction/copol_prediction/README.md) |
+| [`02-reactivity-prediction/copol_prediction/api/`](02-reactivity-prediction/copol_prediction/api/) | The FastAPI service that powers the web app | [README](02-reactivity-prediction/copol_prediction/api/README.md) |
+| [`02-reactivity-prediction/copol_prediction/artifacts/`](02-reactivity-prediction/copol_prediction/artifacts/) | The trained `model_bundle/`, `data_splits/`, and `paper_metrics.json` | — |
+| [`02-reactivity-prediction/copol_prediction/paper_dataset/`](02-reactivity-prediction/copol_prediction/paper_dataset/) | Frozen Nov 2025 snapshot underlying the paper's 3,791-reaction count and the trained model | [README](02-reactivity-prediction/copol_prediction/paper_dataset/README.md) |
+| [`04-NOMAD-database/`](04-NOMAD-database/) | Dataset-summary figures used in the paper | [README](04-NOMAD-database/README.md) |
+| [`03-experiments/`](03-experiments/) | Per-study code: permutation importance, baselines, case studies | [README](03-experiments/README.md) |
+| [`src/copolpredictor/`](src/copolpredictor/) | Inference + data-loading library imported by the API and scripts | — |
+| [`src/copolextractor/`](src/copolextractor/) | Library for the literature-extraction pipeline | — |
+
+## Quick start
+
+### Use the deployed API (no install)
+
+```bash
+curl https://polycarp.cheminfo.org/api/health
+```
+
+### Run the API locally (Docker)
+
+```bash
+git clone https://github.com/lamalab-org/copolymer-reactivity
+cd copolymer-reactivity/02-reactivity-prediction/copol_prediction/api
+docker compose up           # pulls ghcr.io/lamalab-org/copolymer-reactivity:latest
+```
+
+Open <http://localhost:8000/docs> for the interactive OpenAPI documentation.
+
+A SMILES → prediction round-trip in one shell snippet:
+
+```bash
+curl -sS -X POST http://localhost:8000/preprocess_all \
+  -H 'Content-Type: application/json' \
+  -d '{"monomer1_smiles":"C=Cc1ccccc1","monomer2_smiles":"C=C(C)C(=O)OC",
+       "solvent_smiles":"ClC(Cl)Cl","temperature":60,
+       "method":"solvent","polytype":"free radical"}' \
+  | jq '.lookup_class_name'      # "random"
+```
+
+### Install as a library
+
+```bash
+pip install -e .                # core deps
+pip install -e ".[extraction]"  # also install the extraction pipeline
+pip install -e ".[training]"    # also install training-only deps
+pip install -e ".[testing]"     # also install pytest + plugins
+pip install -e ".[database]"    # also install database deps
+```
+
+### Install with `uv` (reproducible environment)
+
+To install the package with the same core dependencies as those used during
+development, we recommend syncing with `uv`, which will create a virtual environment
+and install the exact versions of all dependencies as specified in `pyproject.toml`
+and `uv.lock`. First,
+[install `uv`](https://docs.astral.sh/uv/getting-started/installation/) if you
+haven't already. Then, run the following command in the root of the repository:
+
+```bash
+uv sync --frozen
+```
+
+To install with optional dependencies, use:
+
+```bash
+uv sync --frozen --extra extraction
+uv sync --frozen --extra training
+uv sync --frozen --extra testing
+uv sync --frozen --extra database
+
+# or all at once:
+uv sync --frozen --all-extras
+```
+
+To use the virtual environment created by `uv` for running Python scripts, use:
+
+```bash
+uv run python <script_path>
+```
+
+## Reproducing the paper's numbers
+
+```bash
+cd 02-reactivity-prediction/copol_prediction
+python reproduce_paper_metrics.py
+```
+
+Reads the committed `artifacts/model_bundle/` and the `artifacts/data_splits/`, evaluates plain-XGBoost and the voting model on both splits, and asserts every cell of the paper's `tab:train_test_voting_performance` reproduces within ±0.005. Exits non-zero on any drift — also used as a regression test in CI. Full instructions in [`02-reactivity-prediction/copol_prediction/REPRODUCE.md`](02-reactivity-prediction/copol_prediction/REPRODUCE.md).
+
+## Citation
+
+```bibtex
+@article{SchillingWilhelmi2026,
+  title = {Condition-aware prediction of copolymer architecture},
+  url = {http://dx.doi.org/10.26434/chemrxiv.15004102/v2},
+  DOI = {10.26434/chemrxiv.15004102/v2},
+  publisher = {ChemRxiv},
+  author = {Schilling-Wilhelmi,  Mara and Bulgakov,  Boris and Patiny,  Luc and Kapoor,  Sarthak and Jablonka,  Kevin Maik},
+  year = {2026},
+  month = June 
+}
+```
+
+
+
+## License
+
+MIT — see [LICENSE](LICENSE).

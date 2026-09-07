@@ -1,0 +1,16 @@
+\begin{table}[h!]
+\centering
+\caption{Overall performance of the voting model (XGBoost + Lookup). Error bars are standard deviations from 5-fold group-based cross-validation.}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Metric} & \textbf{Train} & \textbf{Test} & \textbf{Filtered Test} \\
+\midrule
+Samples & 6138 & 1043 & 854 \\[3pt]
+Accuracy (macro) & $0.94 \pm 0.00$ & $0.80 \pm 0.10$ & $0.88 \pm 0.03$ \\
+Accuracy (weighted) & $0.91 \pm 0.00$ & $0.82 \pm 0.06$ & $0.85 \pm 0.02$ \\[3pt]
+Precision (macro) & $0.82 \pm 0.01$ & $0.74 \pm 0.15$ & $0.82 \pm 0.05$ \\
+Precision (weighted) & $0.92 \pm 0.00$ & $0.82 \pm 0.06$ & $0.87 \pm 0.02$ \\
+\bottomrule
+\end{tabular}
+\label{tab:model_performance}
+\end{table}
