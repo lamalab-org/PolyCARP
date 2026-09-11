@@ -37,7 +37,9 @@ import pandas as pd
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 sys.path.insert(0, str(Path(PROJECT_ROOT) / "src"))
 sys.path.insert(0, str(Path(PROJECT_ROOT) / "02-reactivity-prediction" / "copol_prediction"))
-sys.path.insert(0, str(Path(PROJECT_ROOT) / "02-reactivity-prediction" / "copol_prediction" / "api"))
+sys.path.insert(
+    0, str(Path(PROJECT_ROOT) / "02-reactivity-prediction" / "copol_prediction" / "api")
+)
 
 # Reuse preprocessing helpers from API
 from app import (  # type: ignore
@@ -58,8 +60,12 @@ except Exception:
     BASELINE_LOOKUP_AVAILABLE = False
 
 
-MODEL_PATH = os.path.join(PROJECT_ROOT, "02-reactivity-prediction", "copol_prediction", "artifacts", "model_bundle")
-API_DATA_DIR = os.path.join(PROJECT_ROOT, "02-reactivity-prediction", "copol_prediction", "api", "data")
+MODEL_PATH = os.path.join(
+    PROJECT_ROOT, "02-reactivity-prediction", "copol_prediction", "artifacts", "model_bundle"
+)
+API_DATA_DIR = os.path.join(
+    PROJECT_ROOT, "02-reactivity-prediction", "copol_prediction", "api", "data"
+)
 SPLIT_DIR = os.path.join(
     PROJECT_ROOT, "02-reactivity-prediction", "copol_prediction", "artifacts", "data_splits"
 )
@@ -98,7 +104,13 @@ def build_features_for_reaction(
     Build a single feature dict using the same logic as `preprocess_all`
     in the API (without nearest neighbors, papers, etc.).
     """
-    base_path = Path(PROJECT_ROOT) / "02-reactivity-prediction" / "copol_prediction" / "api" / "molecule_properties"
+    base_path = (
+        Path(PROJECT_ROOT)
+        / "02-reactivity-prediction"
+        / "copol_prediction"
+        / "api"
+        / "molecule_properties"
+    )
 
     # --- Monomer features (cached JSON, created by monomer_feature_calculation.py) ---
     m1_data = load_monomer_features(monomer1_smiles, base_path)

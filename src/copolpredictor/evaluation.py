@@ -183,7 +183,10 @@ def save_results_with_confidence(
 
 
 def plot_feature_importance(
-    model: Any, feature_names: Sequence[str], top_n: int = 10, output_path: str = "output/feature_importance.png"
+    model: Any,
+    feature_names: Sequence[str],
+    top_n: int = 10,
+    output_path: str = "output/feature_importance.png",
 ) -> None:
     """
     Plot feature importance for XGBoost model.

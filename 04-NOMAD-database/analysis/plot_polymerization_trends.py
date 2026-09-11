@@ -17,13 +17,22 @@ import pandas as pd
 
 # Add copol_prediction to path to import plot_config
 sys.path.insert(
-    0, str(Path(__file__).parent.parent.parent / "02-reactivity-prediction" / "copol_prediction" / "analysis")
+    0,
+    str(
+        Path(__file__).parent.parent.parent
+        / "02-reactivity-prediction"
+        / "copol_prediction"
+        / "analysis"
+    ),
 )
 from plot_config import SEQUENTIAL_COLORS, TWO_COL_WIDTH_INCH, setup_plot_style
 
 # Load data
 data_path = (
-    Path(__file__).parent.parent.parent / "02-reactivity-prediction" / "copol_prediction" / "processed_data.csv"
+    Path(__file__).parent.parent.parent
+    / "02-reactivity-prediction"
+    / "copol_prediction"
+    / "processed_data.csv"
 )
 print(f"Loading data from: {data_path}")
 

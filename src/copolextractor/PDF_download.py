@@ -4,10 +4,10 @@ import time
 from pathlib import Path
 from typing import List, Optional, Union
 
-import copolextractor.utils as utils
 import requests
 from dotenv import load_dotenv
 
+import copolextractor.utils as utils
 
 REQUEST_TIMEOUT_SECONDS = 20
 SLEEP_BETWEEN_REQUESTS_SECONDS = 0.2
@@ -46,7 +46,9 @@ def is_valid_pdf(file_path: Union[str, Path]) -> bool:
         return False
 
 
-def generate_filename(base_name: str, output_folder: Union[str, Path], extension: str = ".pdf") -> Optional[str]:
+def generate_filename(
+    base_name: str, output_folder: Union[str, Path], extension: str = ".pdf"
+) -> Optional[str]:
     """
     Generate a sanitized filename and check if it exists in the output folder.
     If it exists, check if it's a valid PDF.
@@ -130,7 +132,7 @@ def get_unpaywall_pdf_url(doi: str, email: str) -> Optional[str]:
     except requests.exceptions.RequestException:
         return None
 
-    best_location = (response.json().get("best_oa_location") or {})
+    best_location = response.json().get("best_oa_location") or {}
     return best_location.get("url_for_pdf") or best_location.get("url")
 
 
@@ -186,7 +188,9 @@ def get_core_pdf_url(doi: str, api_key: str) -> Optional[str]:
     return records[0].get("downloadUrl") if records else None
 
 
-def download_open_access_papers(input_file: Union[str, Path], output_folder: Union[str, Path]) -> List[str]:
+def download_open_access_papers(
+    input_file: Union[str, Path], output_folder: Union[str, Path]
+) -> List[str]:
     """Download PDFs through legal open-access APIs and save unresolved DOIs separately.
 
     For each paper marked "downloaded" in `input_file`, tries OpenAlex, then
@@ -243,7 +247,9 @@ def download_open_access_papers(input_file: Union[str, Path], output_folder: Uni
 
     unresolved_path = output_path / "unresolved_papers.json"
     unresolved_path.write_text(json.dumps(unresolved_dois, indent=2), encoding="utf-8")
-    print(f"Open-access downloads complete: {len(downloadable_papers) - len(unresolved_dois)} successful")
+    print(
+        f"Open-access downloads complete: {len(downloadable_papers) - len(unresolved_dois)} successful"
+    )
     print(f"Unresolved papers: {len(unresolved_dois)}")
     print(f"Saved unresolved DOIs to {unresolved_path}")
     return unresolved_dois

@@ -109,7 +109,9 @@ def parse_args():
     parser.add_argument(
         "--model-path",
         type=str,
-        default=os.path.join(_script_dir, "../../02-reactivity-prediction/copol_prediction/artifacts/model_bundle"),
+        default=os.path.join(
+            _script_dir, "../../02-reactivity-prediction/copol_prediction/artifacts/model_bundle"
+        ),
         help="Path to final model bundle",
     )
     # Default to a stable path inside this experiment folder, regardless of CWD

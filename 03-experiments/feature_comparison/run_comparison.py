@@ -41,12 +41,12 @@ sys.path.insert(0, os.path.join(_PROJECT_ROOT, "02-reactivity-prediction", "copo
 sys.path.insert(0, os.path.join(_PROJECT_ROOT, "02-reactivity-prediction"))
 sys.path.insert(0, os.path.join(_SCRIPT_DIR, "fingerprint"))
 
-from utils import load_data_split
-
 from copol_prediction.analysis.analyze_model import (
     compute_fingerprints_for_smiles,
     compute_naive_baseline_predictions_with_similarity,
 )
+from utils import load_data_split
+
 from copolpredictor import model_training, prediction_utils
 from copolpredictor.data_augmentation import augment_with_gaussian_samples
 from copolpredictor.inference import CopolymerPredictor
@@ -67,7 +67,11 @@ except ImportError:
 
 try:
     _STYLE_PATH = os.path.join(
-        _PROJECT_ROOT, "02-reactivity-prediction", "copol_prediction", "analysis", "lamalab.mplstyle"
+        _PROJECT_ROOT,
+        "02-reactivity-prediction",
+        "copol_prediction",
+        "analysis",
+        "lamalab.mplstyle",
     )
     if os.path.exists(_STYLE_PATH):
         plt.style.use(_STYLE_PATH)
@@ -97,7 +101,13 @@ def parse_args():
     parser.add_argument(
         "--final-model-path",
         type=str,
-        default=os.path.join(_PROJECT_ROOT, "02-reactivity-prediction", "copol_prediction", "artifacts", "model_bundle"),
+        default=os.path.join(
+            _PROJECT_ROOT,
+            "02-reactivity-prediction",
+            "copol_prediction",
+            "artifacts",
+            "model_bundle",
+        ),
         help="Path to final model bundle (default: 02-reactivity-prediction/copol_prediction/artifacts/model_bundle)",
     )
     parser.add_argument(

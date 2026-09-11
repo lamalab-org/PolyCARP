@@ -52,9 +52,9 @@ sys.path.insert(0, os.path.join(_SCRIPT_DIR, ".."))
 sys.path.insert(0, os.path.join(_PROJECT_ROOT, "02-reactivity-prediction", "copol_prediction"))
 sys.path.insert(0, os.path.join(_PROJECT_ROOT, "02-reactivity-prediction"))
 
+from copol_prediction.analysis.analyze_model import compute_fingerprints_for_smiles
 from utils import load_data_split
 
-from copol_prediction.analysis.analyze_model import compute_fingerprints_for_smiles
 from copolpredictor import data_augmentation, model_training, prediction_utils
 
 try:
@@ -82,7 +82,11 @@ _SANKEY_CLASS_LABELS = [
 
 try:
     _STYLE_PATH = os.path.join(
-        _PROJECT_ROOT, "02-reactivity-prediction", "copol_prediction", "analysis", "lamalab.mplstyle"
+        _PROJECT_ROOT,
+        "02-reactivity-prediction",
+        "copol_prediction",
+        "analysis",
+        "lamalab.mplstyle",
     )
     if os.path.exists(_STYLE_PATH):
         plt.style.use(_STYLE_PATH)

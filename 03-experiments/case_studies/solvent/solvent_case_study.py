@@ -33,7 +33,9 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(_
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(Path(PROJECT_ROOT) / "02-reactivity-prediction"))
 sys.path.insert(0, str(Path(PROJECT_ROOT) / "src"))
-sys.path.insert(0, str(Path(PROJECT_ROOT) / "02-reactivity-prediction" / "copol_prediction" / "analysis"))
+sys.path.insert(
+    0, str(Path(PROJECT_ROOT) / "02-reactivity-prediction" / "copol_prediction" / "analysis")
+)
 
 from plot_config import setup_plot_style
 
@@ -42,10 +44,17 @@ from copolpredictor.inference import CopolymerPredictor
 # Paths (use final model bundle = newest model)
 # Training data: use the same split as the main model bundle
 TRAIN_DATA_PATH = os.path.join(
-    PROJECT_ROOT, "02-reactivity-prediction", "copol_prediction", "artifacts", "data_splits", "train.csv"
+    PROJECT_ROOT,
+    "02-reactivity-prediction",
+    "copol_prediction",
+    "artifacts",
+    "data_splits",
+    "train.csv",
 )
 CASE_STUDY_PATH = os.path.join(os.path.dirname(__file__), "case_study_features.csv")
-MODEL_PATH = os.path.join(PROJECT_ROOT, "02-reactivity-prediction", "copol_prediction", "artifacts", "model_bundle")
+MODEL_PATH = os.path.join(
+    PROJECT_ROOT, "02-reactivity-prediction", "copol_prediction", "artifacts", "model_bundle"
+)
 
 # Case study parameters
 MONOMER1_SMILES = "C=CC(N)=O"  # Acrylamide

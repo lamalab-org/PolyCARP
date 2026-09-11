@@ -5,9 +5,10 @@ This module provides tools for calibrating trained classifiers using
 sigmoid (Platt scaling) or isotonic regression methods.
 """
 
+from typing import Any, Dict, Optional
+
 import numpy as np
 from numpy.typing import ArrayLike
-from typing import Any, Dict, Optional
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
 

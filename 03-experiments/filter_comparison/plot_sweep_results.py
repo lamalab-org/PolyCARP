@@ -60,7 +60,11 @@ except ImportError:
 # Style for matplotlib
 try:
     _STYLE_PATH = os.path.join(
-        _PROJECT_ROOT, "02-reactivity-prediction", "copol_prediction", "analysis", "lamalab.mplstyle"
+        _PROJECT_ROOT,
+        "02-reactivity-prediction",
+        "copol_prediction",
+        "analysis",
+        "lamalab.mplstyle",
     )
     if os.path.exists(_STYLE_PATH):
         plt.style.use(_STYLE_PATH)

@@ -1,9 +1,10 @@
+from typing import Dict, List, Optional, Sequence, Tuple
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xgboost as xgb
 from numpy.typing import ArrayLike
-from typing import Dict, List, Optional, Sequence, Tuple
 from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.model_selection import GroupKFold
 

@@ -65,7 +65,9 @@ def _load_specialized_cache(cache_path: str) -> dict:
         return {}
 
 
-def load_molecular_data(smiles: str, base_path: str = "./output/molecule_properties") -> Optional[dict]:
+def load_molecular_data(
+    smiles: str, base_path: str = "./output/molecule_properties"
+) -> Optional[dict]:
     """Load molecular properties from JSON file
 
     Args:

@@ -702,9 +702,13 @@ def process_reactions(
 
     # Load PCA mappings
     if polytype_pca_path is None:
-        polytype_pca_path = "02-reactivity-prediction/copol_prediction/api/data/polytype_emb_pca_values.json"
+        polytype_pca_path = (
+            "02-reactivity-prediction/copol_prediction/api/data/polytype_emb_pca_values.json"
+        )
     if method_pca_path is None:
-        method_pca_path = "02-reactivity-prediction/copol_prediction/api/data/method_emb_pca_values.json"
+        method_pca_path = (
+            "02-reactivity-prediction/copol_prediction/api/data/method_emb_pca_values.json"
+        )
 
     print(f"Loading PCA mappings...")
     polytype_pca_map, method_pca_map = load_pca_mappings(polytype_pca_path, method_pca_path)
@@ -856,7 +860,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--input",
         type=Path,
-        default=project_root / "02-reactivity-prediction" / "copol_prediction" / "processed_data.csv",
+        default=project_root
+        / "02-reactivity-prediction"
+        / "copol_prediction"
+        / "processed_data.csv",
         help=(
             "Input source. Either a processed_data.csv-shaped CSV or a "
             "directory of per-reaction JSONs. "
@@ -877,12 +884,16 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     polytype_pca_path = str(
-        project_root / "02-reactivity-prediction/copol_prediction/api/data/polytype_emb_pca_values.json"
+        project_root
+        / "02-reactivity-prediction/copol_prediction/api/data/polytype_emb_pca_values.json"
     )
     method_pca_path = str(
-        project_root / "02-reactivity-prediction/copol_prediction/api/data/method_emb_pca_values.json"
+        project_root
+        / "02-reactivity-prediction/copol_prediction/api/data/method_emb_pca_values.json"
     )
-    monomer_source_directory = project_root / "02-reactivity-prediction/copol_prediction/api/molecule_properties"
+    monomer_source_directory = (
+        project_root / "02-reactivity-prediction/copol_prediction/api/molecule_properties"
+    )
 
     print("Starting database JSON creation...")
     print(f"Input:               {args.input}")

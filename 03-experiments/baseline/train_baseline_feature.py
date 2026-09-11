@@ -25,6 +25,7 @@ from copol_prediction.analysis.analyze_model import (
     compute_naive_baseline_predictions_with_similarity,
 )
 from copol_prediction.utils import load_data_split
+
 from copolpredictor import (
     data_augmentation,
     data_processing,

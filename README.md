@@ -144,7 +144,7 @@ Reads the committed `artifacts/model_bundle/` and the `artifacts/data_splits/`, 
   publisher = {ChemRxiv},
   author = {Schilling-Wilhelmi,  Mara and Bulgakov,  Boris and Patiny,  Luc and Kapoor,  Sarthak and Jablonka,  Kevin Maik},
   year = {2026},
-  month = June 
+  month = June
 }
 ```
 

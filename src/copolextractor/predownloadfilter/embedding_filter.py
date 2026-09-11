@@ -64,7 +64,9 @@ def load_failed_crossref(failed_path: str = "output/failed_crossref.json") -> se
     return set()
 
 
-def save_failed_crossref(failed_dois: set, failed_path: str = "output/failed_crossref.json") -> None:
+def save_failed_crossref(
+    failed_dois: set, failed_path: str = "output/failed_crossref.json"
+) -> None:
     """Persist the set of DOIs for which CrossRef lookups failed.
 
     Args:
@@ -448,7 +450,9 @@ def find_nearest_paper_with_new(
     )
 
 
-def get_embedding(client: OpenAI, text: str, model: str = "text-embedding-3-small") -> Tuple[list, int]:
+def get_embedding(
+    client: OpenAI, text: str, model: str = "text-embedding-3-small"
+) -> Tuple[list, int]:
     """Get embeddings for a given text.
 
     Args:

@@ -290,7 +290,9 @@ def process_chemicals(data: List[dict]) -> List[dict]:
     return data
 
 
-def is_within_deviation(calc_product: float, expected_product: float, deviation: float = 0.10) -> bool:
+def is_within_deviation(
+    calc_product: float, expected_product: float, deviation: float = 0.10
+) -> bool:
     """Check if actual product is within allowed deviation.
 
     Args:

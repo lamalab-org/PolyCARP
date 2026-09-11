@@ -185,7 +185,9 @@ def load_training_data():
 
     script_dir = Path(__file__).parent
     project_root = script_dir.parent.parent.parent
-    split_dir = project_root / "02-reactivity-prediction" / "copol_prediction" / "artifacts" / "data_splits"
+    split_dir = (
+        project_root / "02-reactivity-prediction" / "copol_prediction" / "artifacts" / "data_splits"
+    )
 
     try:
         df_train, df_test = load_data_split.load_train_test_split(split_dir=str(split_dir))

@@ -39,6 +39,7 @@ from copol_prediction.analysis.analyze_model import (  # noqa: E402
 )
 from copol_prediction.analysis.plot_config import TWO_COL_WIDTH_INCH, get_class_label  # noqa: E402
 from copol_prediction.utils import load_data_split  # noqa: E402
+
 from copolpredictor import model_training  # noqa: E402
 from copolpredictor.inference import CopolymerPredictor  # noqa: E402
 
@@ -103,7 +104,9 @@ def _resolve_paths(args):
 def load_train_val():
     script_dir = Path(__file__).resolve().parent
     project_root = script_dir.parent.parent
-    split_dir = project_root / "02-reactivity-prediction" / "copol_prediction" / "artifacts" / "data_splits"
+    split_dir = (
+        project_root / "02-reactivity-prediction" / "copol_prediction" / "artifacts" / "data_splits"
+    )
 
     df_train, df_val, _df_test = load_data_split.load_train_val_test_split(split_dir=str(split_dir))
     return df_train.reset_index(drop=True), df_val.reset_index(drop=True)

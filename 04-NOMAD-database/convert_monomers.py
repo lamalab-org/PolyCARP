@@ -31,7 +31,9 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_REACTIONS_CSV = REPO_ROOT / "02-reactivity-prediction" / "copol_prediction" / "processed_data.csv"
+DEFAULT_REACTIONS_CSV = (
+    REPO_ROOT / "02-reactivity-prediction" / "copol_prediction" / "processed_data.csv"
+)
 DEFAULT_FEATURE_SOURCE_DIR = (
     REPO_ROOT / "02-reactivity-prediction" / "copol_prediction" / "api" / "molecule_properties"
 )

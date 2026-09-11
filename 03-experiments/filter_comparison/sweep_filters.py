@@ -50,13 +50,13 @@ sys.path.insert(0, os.path.join(_SCRIPT_DIR, ".."))
 sys.path.insert(0, os.path.join(_PROJECT_ROOT, "02-reactivity-prediction", "copol_prediction"))
 sys.path.insert(0, os.path.join(_PROJECT_ROOT, "02-reactivity-prediction"))
 
-from utils import load_data_split
-
 from copol_prediction.analysis.analyze_model import (
     compute_fingerprints_for_smiles,
     compute_naive_baseline_predictions_with_similarity,
 )
 from copol_prediction.mayo_lewis_classification import classify_reactivity_curve
+from utils import load_data_split
+
 from copolpredictor import data_augmentation, model_training, prediction_utils
 
 try:

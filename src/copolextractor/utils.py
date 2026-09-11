@@ -254,7 +254,9 @@ def load_embeddings(file_path: Union[str, Path] = "embeddings.json") -> dict:
     return {}
 
 
-def save_embeddings(embeddings_dict: dict, file_path: Union[str, Path] = "output_2/embeddings.json") -> None:
+def save_embeddings(
+    embeddings_dict: dict, file_path: Union[str, Path] = "output_2/embeddings.json"
+) -> None:
     """Save embeddings to a JSON file.
 
     Args:
@@ -271,7 +273,9 @@ def save_embeddings(embeddings_dict: dict, file_path: Union[str, Path] = "output
     print(f"Saved {len(embeddings_list)} embeddings to {file_path}.")
 
 
-def get_or_create_embedding(text: Union[str, None], model: str = "text-embedding-3-small") -> Union[list, None]:
+def get_or_create_embedding(
+    text: Union[str, None], model: str = "text-embedding-3-small"
+) -> Union[list, None]:
     """
     Retrieve embeddings for a given text.
     Uses cache if available, otherwise generates new embeddings.
@@ -324,7 +328,9 @@ def get_or_create_embedding(text: Union[str, None], model: str = "text-embedding
         return None
 
 
-def is_within_deviation(actual_product: float, expected_product: float, deviation: float = 0.10) -> bool:
+def is_within_deviation(
+    actual_product: float, expected_product: float, deviation: float = 0.10
+) -> bool:
     """Check if product is within acceptable deviation.
 
     Args:

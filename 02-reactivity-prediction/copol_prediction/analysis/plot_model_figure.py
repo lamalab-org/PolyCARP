@@ -52,6 +52,7 @@ from copol_prediction.analysis.plot_config import (
     setup_plot_style,
 )
 from copol_prediction.utils import load_data_split
+
 from copolpredictor.inference import CopolymerPredictor
 
 _SANKEY_CLASS_ORDER = [0, 1, 2, -1]

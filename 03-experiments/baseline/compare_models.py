@@ -30,13 +30,6 @@ import pandas as pd
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../02-reactivity-prediction"))
 
-from sklearn.metrics import (
-    ConfusionMatrixDisplay,
-    balanced_accuracy_score,
-    confusion_matrix,
-    precision_score,
-)
-
 from copol_prediction.analysis.analyze_model import (
     compute_naive_baseline_predictions_with_similarity,
     get_class_label,
@@ -50,6 +43,13 @@ from copol_prediction.analysis.plot_config import (
     setup_plot_style,
 )
 from copol_prediction.utils import load_data_split
+from sklearn.metrics import (
+    ConfusionMatrixDisplay,
+    balanced_accuracy_score,
+    confusion_matrix,
+    precision_score,
+)
+
 from copolpredictor import model_training, prediction_utils
 from copolpredictor.data_augmentation import augment_with_gaussian_samples
 from copolpredictor.inference import CopolymerPredictor
