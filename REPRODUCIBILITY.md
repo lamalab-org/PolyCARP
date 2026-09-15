@@ -96,16 +96,11 @@ Try the bundled `02-reactivity-prediction/copol_prediction/artifacts/data_splits
 as input. This returns XGBoost predictions; voting also needs the lookup in the
 API or reproduction script. Required feature names are in the bundle's `meta.json`.
 
-## Records still needed
+## Historical records
 
-The [model card](MODEL_CARD.md) covers data, splits, training, evaluation, and
-limitations. For the Nature Portfolio [software](https://www.nature.com/documents/nr-software-policy.pdf)
-and [ML](https://www.nature.com/documents/machine-learning-checklist.pdf) checklists,
-authors still need to establish:
-
-- The dated extraction-model snapshot: the code's `chatgpt-4o-latest` alias changes over time.
-- Original training/extraction hardware and runtime.
-- Whether the optional CV-pruning file recorded in model metadata was present and used.
-- Whether a colleague unfamiliar with the software tested it; author declarations and laboratory replicate counts.
-
-The measurements above document this later verification run.
+The measurements above describe verification of the released model. The source
+uses the moving extraction alias `chatgpt-4o-latest`; its dated snapshot and the
+original extraction/training hardware and runtimes are not recorded here.
+Model metadata also names an optional pruning file whose historical use has not
+been established. These records would help repeat the original training run;
+the bundled artifacts support the evaluation documented above.

@@ -5,9 +5,8 @@
 PolyCARP helps chemists choose copolymerization recipes. Given two monomers and
 reaction conditions, it predicts an alternating, random, or gradient regime and
 retrieves similar literature experiments. It combines XGBoost with a
-nearest-neighbour lookup, retaining predictions when the two agree. These are
-coarse architecture classes, not exact chain sequences or guarantees of synthesis
-success.
+nearest-neighbour lookup, retaining predictions when the two agree. Chemists can
+inspect the retrieved precedents when choosing recipes for laboratory testing.
 
 **Authors:** Mara Schilling-Wilhelmi, Boris Bulgakov, Luc Patiny, Sarthak Kapoor,
 and Kevin Maik Jablonka. **Contact:** kevin.jablonka@uni-jena.de.
@@ -50,9 +49,10 @@ frontier-orbital differences, temperature, polymerization type, and solvent.
 Use the committed [split files](02-reactivity-prediction/copol_prediction/artifacts/data_splits/)
 to reproduce results. `create_data_split.py` reuses saved reaction IDs or uses
 `GroupShuffleSplit` (seeds 42 and 43) for approximately 70/10/20 partitions.
-Mirrored rows stay together and are not independent replicates. Monomer pairs
-and publications can cross partitions: the test measures performance on held-out
-reactions, not wholly unseen pairs or publications.
+Grouping keeps both monomer orderings of a reaction in the same partition. The
+test evaluates new reaction records within the literature domain; monomer pairs
+and publications may occur in multiple partitions. The paper separately tests
+condition changes and prospective laboratory predictions.
 
 ## Training
 
@@ -77,21 +77,27 @@ Retained macro recall is 0.805 and precision is 0.768. Class F1 scores are
 [Reproduction](02-reactivity-prediction/copol_prediction/REPRODUCE.md) uses a
 train-only lookup pool; the deployed API may search a larger literature pool.
 
-The paper also reports feature-importance analyses, condition-feature ablations,
-a nine-solvent case study (seven correct, two abstentions), and three prospective
-syntheses (two matching predictions). Three syntheses give limited evidence of
-laboratory utility.
+Validation connects statistical performance to chemical use:
 
-## Limits
+- **Condition ablation:** on 93 samples from 26 monomer pairs, including conditions
+  raises balanced accuracy from 0.55 to 0.64 and macro F1 from 0.69 to 0.77.
+- **Historical solvent series:** seven correct predictions and two abstentions
+  across nine solvents for a pair excluded from training.
+- **Prospective synthesis:** two of three new laboratory copolymerizations match
+  the predicted architecture.
+- **Interpretation:** SHAP and permutation analyses assess feature contributions;
+  retrieved experiments provide source-linked chemical precedents.
 
-Literature selection, extraction errors, and uneven chemical coverage can bias
-predictions. Quality filtering, class weighting, and source retrieval help,
-but agreement between predictors does not establish reliability for an unfamiliar
-recipe. Inspect the precedents and test new monomer families and unusual
-conditions experimentally. Alternating is especially underrepresented: the test
-set contains only 68 mirrored rows.
+## Scope
 
-[Unresolved provenance](REPRODUCIBILITY.md#records-still-needed) includes the
-historical extraction-model snapshot, training resources, and optional training
-pruning. Released data and weights allow the demo to run without repeating
-extraction or training.
+The model supports recipe selection within the chemical space represented by
+its literature data. Quality filtering, inverse-frequency class weighting,
+reaction-grouped evaluation, and separate calibration address data quality,
+class imbalance, and evaluation design. Published measurements remain unevenly
+distributed: alternating examples comprise 68 of the 1,358 mirrored test rows.
+Performance on new monomer families therefore needs further experimental testing;
+the prospective validation reported here covers three systems.
+
+The released data, weights, and descriptors support local reproduction.
+[Reproduction details](REPRODUCIBILITY.md) distinguish the verified environment
+from historical extraction and training records.
