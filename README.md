@@ -29,7 +29,7 @@ This repo contains **two main pipelines** that produce the dataset, the model, a
                                     │ Pipeline 2 — reactions → model + API    │   02-reactivity-prediction/copol_prediction/
                                     │                                         │
                                     │   1. XTB descriptors per monomer        │
-                                    │   2. mreaction-ID-stratified splits     │
+                                    │   2. reaction-ID-stratified splits      │
                                     │   3. XGBoost training + calibration     │
                                     │   4. voting layer (model + lookup)      │
                                     │   5. FastAPI service                    │
