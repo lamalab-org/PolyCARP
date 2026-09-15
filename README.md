@@ -29,7 +29,7 @@ This repo contains **two main pipelines** that produce the dataset, the model, a
                                     │ Pipeline 2 — reactions → model + API    │   02-reactivity-prediction/copol_prediction/
                                     │                                         │
                                     │   1. XTB descriptors per monomer        │
-                                    │   2. mreaction-ID-stratified splits     │
+                                    │   2. reaction-ID-grouped splits       │
                                     │   3. XGBoost training + calibration     │
                                     │   4. voting layer (model + lookup)      │
                                     │   5. FastAPI service                    │
@@ -66,8 +66,8 @@ curl https://polycarp.cheminfo.org/api/health
 ### Run the API locally (Docker)
 
 ```bash
-git clone https://github.com/lamalab-org/copolymer-reactivity
-cd copolymer-reactivity/02-reactivity-prediction/copol_prediction/api
+git clone https://github.com/lamalab-org/PolyCARP.git
+cd PolyCARP/02-reactivity-prediction/copol_prediction/api
 docker compose up           # pulls ghcr.io/lamalab-org/copolymer-reactivity:latest
 ```
 
@@ -96,10 +96,8 @@ pip install -e ".[database]"    # also install database deps
 
 ### Install with `uv` (reproducible environment)
 
-To install the package with the same core dependencies as those used during
-development, we recommend syncing with `uv`, which will create a virtual environment
-and install the exact versions of all dependencies as specified in `pyproject.toml`
-and `uv.lock`. First,
+To install the dependency versions pinned in this repository, sync with `uv`.
+It creates a virtual environment using `pyproject.toml` and `uv.lock`. First,
 [install `uv`](https://docs.astral.sh/uv/getting-started/installation/) if you
 haven't already. Then, run the following command in the root of the repository:
 
@@ -127,12 +125,19 @@ uv run python <script_path>
 
 ## Reproducing the paper's numbers
 
+From the repository root, with Python 3.12 and [uv](https://docs.astral.sh/uv/):
+
 ```bash
-cd 02-reactivity-prediction/copol_prediction
-python reproduce_paper_metrics.py
+uv sync --locked --python 3.12 --extra reproduction
+uv run --locked --extra reproduction python 02-reactivity-prediction/copol_prediction/reproduce_paper_metrics.py
 ```
 
 Reads the committed `artifacts/model_bundle/` and the `artifacts/data_splits/`, evaluates plain-XGBoost and the voting model on both splits, and asserts every cell of the paper's `tab:train_test_voting_performance` reproduces within ±0.005. Exits non-zero on any drift — also used as a regression test in CI. Full instructions in [`02-reactivity-prediction/copol_prediction/REPRODUCE.md`](02-reactivity-prediction/copol_prediction/REPRODUCE.md).
+
+## Model and reproducibility documentation
+
+- [Model card](MODEL_CARD.md): intended use, labels, data, split, training, evaluation, and limitations.
+- [Reviewer guide](REPRODUCIBILITY.md): tested installation, demo, expected output, own-data use, and reporting evidence.
 
 ## Citation
 

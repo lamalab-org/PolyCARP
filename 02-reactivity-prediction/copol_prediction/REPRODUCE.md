@@ -12,10 +12,17 @@ Nothing is retrained. The script evaluates the **released model bundle**
 
 ```bash
 # from the repo root
-pip install -e .[testing]      # core deps + rdkit + xgboost + pandas
+uv sync --locked --python 3.12 --extra reproduction
+source .venv/bin/activate
+
+# Alternative (versions are not locked):
+# python -m pip install -e ".[reproduction]"
 ```
 
-The model bundle and data splits are already in the repo — no download needed.
+The model bundle and data splits are already in the repo — no additional data download is needed.
+The initial dependency installation requires internet access. See the
+[reviewer guide](../../REPRODUCIBILITY.md) for OS requirements, measured timings,
+and instructions for applying the model to your own data.
 
 ## 1. Quick check: does the model run on the data?
 

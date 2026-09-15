@@ -1,0 +1,74 @@
+{
+  "date": "2026-09-15",
+  "purpose": "Post-release offline verification; not the historical training environment",
+  "os": "macOS 26.5.1 (25F80)",
+  "machine": "Apple M4 Max, arm64, 16 CPU cores, 64 GiB RAM",
+  "python": "3.12.11",
+  "uv": "0.8.16",
+  "gpu_used": false,
+  "installation": {
+    "seconds": 17.413226625008974,
+    "exit_code": 0,
+    "python": "3.12.11",
+    "command": "uv sync --locked --python 3.12.11 --extra reproduction",
+    "cache": "empty at start; preinstalled Python; excludes repository clone and uv installation"
+  },
+  "demo": {
+    "seconds": 101.37633362499764,
+    "exit_code": 0
+  },
+  "demo_command": "python 02-reactivity-prediction/copol_prediction/reproduce_paper_metrics.py",
+  "demo_environment": {
+    "MPLBACKEND": "Agg",
+    "MPLCONFIGDIR": "fresh writable directory"
+  },
+  "packages": {
+    "PyYAML": "6.0.3",
+    "certifi": "2026.5.20",
+    "charset-normalizer": "3.4.7",
+    "contourpy": "1.3.3",
+    "copolymer-reactivity": "0.1.0",
+    "cycler": "0.12.1",
+    "fonttools": "4.63.0",
+    "idna": "3.17",
+    "joblib": "1.5.3",
+    "kiwisolver": "1.5.0",
+    "matplotlib": "3.10.9",
+    "numpy": "2.4.6",
+    "packaging": "26.2",
+    "pandas": "3.0.3",
+    "pillow": "12.2.0",
+    "pyparsing": "3.3.2",
+    "python-dateutil": "2.9.0.post0",
+    "rdkit": "2026.3.2",
+    "requests": "2.34.2",
+    "scikit-learn": "1.8.0",
+    "scipy": "1.17.1",
+    "seaborn": "0.13.2",
+    "six": "1.17.0",
+    "threadpoolctl": "3.6.0",
+    "urllib3": "2.7.0",
+    "xgboost": "3.2.0"
+  },
+  "sha256": {
+    "02-reactivity-prediction/copol_prediction/artifacts/data_splits/split_info.json": "343a6df62fcc6a000bc7dd5cb33d3f01b4d5a8617825d6212c93b4f886462f2b",
+    "02-reactivity-prediction/copol_prediction/artifacts/data_splits/test.csv": "bb091442392ffd2c305ecc9b1d6cb72a72f93fffa2714c8d9910634a859f19b2",
+    "02-reactivity-prediction/copol_prediction/artifacts/data_splits/train.csv": "d1d6a646add668f99d3d489275c1fc26a9ff812b38a0eb2b52f93c3f1757d4f4",
+    "02-reactivity-prediction/copol_prediction/artifacts/data_splits/val.csv": "3acab3aee101cd9efe02355684c4876009bf0bc62512c5e4b040fa485be6fe53",
+    "02-reactivity-prediction/copol_prediction/artifacts/model_bundle/calibration.joblib": "c6a3da08d3fc1b03d5ee4e603c0513eabb652556e2b81a50060a46813e7faf84",
+    "02-reactivity-prediction/copol_prediction/artifacts/model_bundle/meta.json": "f399237f2f81743ac786bae41ba253fa86566a0ab2e09d27957a218836ca949a",
+    "02-reactivity-prediction/copol_prediction/artifacts/model_bundle/model.joblib": "86bb6a7de5ed323cd519a97537591e16732071ff5bbfa0401c815faf9723ca92",
+    "02-reactivity-prediction/copol_prediction/artifacts/model_bundle/model.xgb.json": "3bf24c54b5a40a1071bb380dff23fadc78bfcca0915599e25facff3267003e00",
+    "02-reactivity-prediction/copol_prediction/artifacts/model_bundle/voting_test_metrics.json": "81dc292836a5b280342d392de21883ac9629ec98e6a597a0b35fa9813a46dc3e",
+    "02-reactivity-prediction/copol_prediction/reproduce_paper_metrics.py": "15085b10bd1f74bdbb8e9dbb9c70d0c3713d552d3c7256ef535b37d156cf156b",
+    "uv.lock": "fe90a7b4605e8ce9f37c299119585bc5769602f7b959e282fa0234f363aca038"
+  },
+  "additional_checks": {
+    "test_command": "python -m pytest tests -q -x",
+    "test_result": "100 passed, 5 warnings",
+    "test_seconds": 17.46,
+    "test_notes": "Installed testing extra in addition to reproduction; public chemical-name resolvers required network access. Historical serialized estimator version warnings remain.",
+    "own_data_example": "1358 rows; plain XGBoost accuracy 0.740058910162003",
+    "split_check": "All three pairs of partitions have zero reaction-ID overlap"
+  }
+}

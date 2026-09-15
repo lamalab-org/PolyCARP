@@ -24,6 +24,14 @@ dependencies = [
 # experiment scripts, not for inference.
 training = [
     "matplotlib",
+    "seaborn",
+    "pyyaml",
+]
+# The paper-metrics demo imports the analysis helpers, including plotting
+# modules. Keep this usable without the extraction/API/testing stacks.
+reproduction = [
+    "matplotlib",
+    "seaborn",
     "pyyaml",
 ]
 # Heavy data-extraction / LLM stack: only needed for the offline pipelines

@@ -1,0 +1,45 @@
+XGBoost predictions: local model bundle — <repository>/02-reactivity-prediction/copol_prediction/artifacts/model_bundle
+✓ Loaded model from <repository>/02-reactivity-prediction/copol_prediction/artifacts/model_bundle
+  - Features: 19
+  - Classes: [0, 1, 2]
+  - Created: 2026-04-28T08:21:57.382754Z
+  - Calibration: isotonic (fitted_on=validation_voting_subset)
+  Lookup model: processed 500/4738 test points
+  Lookup model: processed 1000/4738 test points
+  Lookup model: processed 1500/4738 test points
+  Lookup model: processed 2000/4738 test points
+  Lookup model: processed 2500/4738 test points
+  Lookup model: processed 3000/4738 test points
+  Lookup model: processed 3500/4738 test points
+  Lookup model: processed 4000/4738 test points
+  Lookup model: processed 4500/4738 test points
+
+====================================================================
+Train — voting model (retained 4358/4738, coverage 0.920)
+====================================================================
+Class             Acc    Prec      F1        paper Acc/Prec/F1
+Alternating     1.000   0.957   0.978    1.000/0.957/0.978  ok
+Random          0.984   0.982   0.983    0.984/0.982/0.983  ok
+Gradient        0.983   0.989   0.986    0.983/0.989/0.986  ok
+Macro           0.989   0.976   0.982    0.989/0.976/0.982  ok
+coverage        0.920                    0.920        ok
+✓ Loaded model from <repository>/02-reactivity-prediction/copol_prediction/artifacts/model_bundle
+  - Features: 19
+  - Classes: [0, 1, 2]
+  - Created: 2026-04-28T08:21:57.382754Z
+  - Calibration: isotonic (fitted_on=validation_voting_subset)
+  Lookup model: processed 500/1358 test points
+  Lookup model: processed 1000/1358 test points
+
+====================================================================
+Test — voting model (retained 1045/1358, coverage 0.770)
+====================================================================
+Class             Acc    Prec      F1        paper Acc/Prec/F1
+Alternating     0.788   0.667   0.722    0.788/0.667/0.722  ok
+Random          0.781   0.812   0.796    0.781/0.812/0.796  ok
+Gradient        0.845   0.827   0.836    0.845/0.827/0.836  ok
+Macro           0.805   0.768   0.785    0.805/0.768/0.785  ok
+coverage        0.770                    0.770        ok
+
+====================================================================
+REPRODUCED: all values within ±0.005 of the paper table.

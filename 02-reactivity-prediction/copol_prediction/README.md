@@ -9,7 +9,7 @@ This is **Pipeline 2** of the repo (see the [top-level README](../../README.md) 
                   ▲                              3,791 unique reactions, 1,206 papers)
                   │
                   │ ↓ monomer_feature_calculation.py          (XTB descriptors)
-                  │ ↓ create_data_split.py                    (stratified by monomer pair)
+                  │ ↓ create_data_split.py                    (grouped by reaction ID)
                   ▼
        artifacts/data_splits/{train,val,test}.csv
                   │
@@ -26,20 +26,19 @@ This is **Pipeline 2** of the repo (see the [top-level README](../../README.md) 
                   │
                   │ ↓ reproduce_paper_metrics.py              ← regression check
                   ▼
-       artifacts/paper_metrics.json + REPRODUCED on stdout
+       checked performance table + REPRODUCED on stdout
 ```
 
 ## Classes
 
-The classifier predicts one of three architecture classes, derived from the reactivity-ratio product `r₁·r₂`:
+The classifier predicts `0 = alternating`, `1 = random`, or `2 = gradient`.
+Labels are assigned from the geometry of the Mayo–Lewis composition curve using
+both reactivity ratios, rather than thresholds on their product. The
+`r_product_class` column name is retained for compatibility.
 
-| index | name | rule | meaning |
-|---:|---|---|---|
-| 0 | `alternating` | `r₁·r₂ < 1` | monomers prefer the comonomer over self-addition |
-| 1 | `random` | `1 ≤ r₁·r₂ ≤ 25` | catch-all (covers azeotropic, mildly-alternating, and mildly-blocky systems) |
-| 2 | `gradient` | `r₁·r₂ > 25` | monomers prefer self-addition; composition drift along the chain |
-
-The canonical mapping lives in [`api/class_labels.py`](api/class_labels.py) and is imported everywhere the names appear — single source of truth.
+See [the model card](../../MODEL_CARD.md#prediction-target) for the exact rules
+and [`mayo_lewis_classification.py`](mayo_lewis_classification.py) for their
+implementation. [`api/class_labels.py`](api/class_labels.py) maps class IDs to names.
 
 ## Voting model
 
@@ -57,10 +56,10 @@ The **voting** layer keeps only predictions where the two agree (the "coverage" 
 ├── processed_data.csv                   ← live dataset (the API reads this for the
 │                                          nearest-neighbour lookup pool)
 │
-├── create_data_split.py                 ← monomer-pair-stratified 70/10/20 split
+├── create_data_split.py                 ← reaction-ID-grouped 70/10/20 split
 ├── train_final_model.py                 ← XGBoost training + calibration
 ├── monomer_feature_calculation.py       ← XTB descriptor pipeline
-├── mayo_lewis_classification.py         ← r1·r2 → class assignment
+├── mayo_lewis_classification.py         ← Mayo–Lewis curve → class assignment
 ├── reproduce_paper_metrics.py           ← canonical regression check
 ├── preprocess_splits_full_features.py   ← splits with full feature set (perm. importance)
 ├── REPRODUCE.md                         ← reproduction recipe details
@@ -74,20 +73,22 @@ The **voting** layer keeps only predictions where the two agree (the "coverage" 
     ├── model_bundle/                    ← XGBoost model + calibration + metadata
     ├── data_splits/                     ← train/val/test (6,774 rows / 3,387 reactions)
     ├── data_splits_full_features/       ← splits with descriptors for permutation analysis
-    └── paper_metrics.json               ← cached output of reproduce_paper_metrics.py
+    └── paper_metrics.json               ← output of reproduce_paper_metrics.py --json
                                            served unmodified by GET /paper_metrics
 ```
 
-### Setup (First Time)
-```bash
-# 1. Create central train/test split
-python create_data_split.py
+### First-time evaluation
 
-# 2. Calculate molecular features (cached, ~1-5 min/monomer)
-python monomer_feature_calculation.py
+Install the locked environment using the [reviewer guide](../../REPRODUCIBILITY.md),
+then run the following from this directory with that environment activated:
+
+```bash
+python reproduce_paper_metrics.py
 ```
 
-Loads `artifacts/model_bundle/` + `artifacts/data_splits/`, evaluates plain XGBoost and the voting model on both splits, asserts every cell of the paper's table reproduces within ±0.005. Exits non-zero on drift. Also the basis of `tests/test_api_parity.py::test_paper_metrics_endpoint`.
+The released splits and descriptors are already included. This evaluates the
+bundled XGBoost and voting models and checks the paper table to tolerance 0.005.
+The re-splitting and training commands below are for developing a new model.
 
 ### Re-split the dataset
 
@@ -95,7 +96,14 @@ Loads `artifacts/model_bundle/` + `artifacts/data_splits/`, evaluates plain XGBo
 python create_data_split.py
 ```
 
-Reads `processed_data.csv`, applies the paper filter (`r₁·r₂ ≥ 0`, `r₁·r₂` not null, drop rows with NaN features), stratifies by **monomer pair** (`frozenset({canon(m1), canon(m2)})`) so all rows for a given pair land in the same split (prevents leakage), writes `artifacts/data_splits/{train,val,test}.csv` + `split_info.json`.
+Reads `processed_data.csv`, removes invalid/missing reactivity-ratio products and
+rows with missing model features, and groups by **`reaction_id`**. Existing test
+and validation group IDs are reused; otherwise `GroupShuffleSplit` creates
+approximately 70/10/20 train/validation/test groups (seeds 42 and 43).
+Mirrored monomer orderings stay together. Monomer pairs and publications can
+occur in more than one split. This tests held-out reactions, not strictly unseen
+monomer pairs or publications. The committed split files define the released
+results; running this script rewrites them.
 
 ### Retrain the model
 
@@ -106,7 +114,13 @@ python train_final_model.py
 cd ../../03-experiments/filter_comparison && python sweep_filters.py
 ```
 
-Reads the splits, runs `RandomizedSearchCV` over XGBoost hyper-parameters (5-fold GroupKFold by `monomer_pair_key`), fits the final model on train+val, calibrates on a held-out subset, writes the new `artifacts/model_bundle/`. Run `python reproduce_paper_metrics.py` afterwards to confirm the new bundle matches (or to capture the new numbers if you intend to update the paper).
+Reads the splits and searches 100 hyperparameter configurations using five-fold
+cross-validation grouped by `reaction_id` within the training set. It fits the
+final XGBoost model on the training set and fits isotonic calibration on the
+validation voting subset. The test set is reserved for evaluation. See the
+[model card](../../MODEL_CARD.md#training) for the released configuration.
+Retraining overwrites the model bundle and may change results; evaluating the
+released bundle with `reproduce_paper_metrics.py` does not require retraining.
 
 ### Compute monomer descriptors
 
@@ -133,22 +147,23 @@ predictor = CopolymerPredictor("artifacts/model_bundle")
 result = predictor.predict_with_confidence(features)
 ```
 
-See [`src/copolpredictor/`](../src/copolpredictor/) for module docs.
+See [`src/copolpredictor/`](../../src/copolpredictor/) for module docs.
 
 ## Central Data Split
 
-All scripts use a **central train/test split** (created once, reused everywhere):
+All scripts use a **central train/validation/test split** (created once, reused everywhere):
 
 ```bash
 python create_data_split.py [--remove-specialized]
 ```
 
 Creates:
-- `artifacts/data_splits/train.csv` (~80% of groups)
-- `artifacts/data_splits/test.csv` (~20% of groups)
+- `artifacts/data_splits/train.csv` (2,369 reactions; 4,738 mirrored rows)
+- `artifacts/data_splits/val.csv` (339 reactions; 678 mirrored rows)
+- `artifacts/data_splits/test.csv` (679 reactions; 1,358 mirrored rows)
 - `artifacts/data_splits/split_info.json`
 
-**Benefits:** Reproducible, fair comparison, no data leakage (group-based split by `reaction_id`)
+**Scope:** Reaction IDs are disjoint across splits. This does not enforce disjoint monomer pairs or publications.
 
 **Usage in code:**
 ```python
@@ -157,6 +172,9 @@ df_train, df_test = load_data_split.load_train_test_split()
 ```
 
 ## Scripts
+
+The timings below are legacy estimates without a recorded reference machine.
+For measured installation and demo timings, see the [reviewer guide](../../REPRODUCIBILITY.md).
 
 | Script | Purpose | Time |
 |--------|---------|------|
@@ -176,15 +194,15 @@ python train_final_model.py [options]
 
 Options:
   --output-dir DIR         Model directory (default: artifacts/model_bundle)
-  --hyperparam-iter N      Search iterations (default: 25)
+  --hyperparam-iter N      Search iterations (default: 100)
   --augmentation-samples N Augmentation samples (default: 5)
   --random-state N         Random seed (default: 42)
 ```
 
-**Configuration** (edit lines 371-373 in file):
+**Released configuration** (see `main()` and artifact `meta.json`):
 ```python
 config = {
-    'add_negative_data': True,    # Add synthetic negatives
+    'add_negative_data': False,    # Add synthetic negatives
     'use_augmentation': False,    # Gaussian augmentation
 }
 ```
@@ -280,7 +298,7 @@ curl -X POST "http://localhost:8000/predict" \
 
 ## Model Pipeline
 
-1. Load central train/test split (group-based, ~20% test)
+1. Load central train/validation/test split (group-based, ~20% test)
 2. Optional: Add negative data, augmentation
 3. Hyperparameter search (RandomizedSearchCV, 5-fold GroupKFold)
 4. Train final model on full training set
