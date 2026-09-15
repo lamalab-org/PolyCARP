@@ -1,135 +1,97 @@
 # PolyCARP model card
 
-## Model and intended use
+## Purpose
 
-PolyCARP supports experimental planning by predicting an alternating, random,
-or gradient copolymerization regime from monomer structures and reaction
-conditions. It combines a three-class XGBoost classifier with a nearest-neighbour
-literature lookup. The voting prediction is retained when the two agree.
-Researchers can inspect the retrieved experimental precedents before choosing
-a recipe. The model does not predict an exact chain sequence, self-assembly,
-yield, or the success of a synthesis.
+PolyCARP helps chemists choose copolymerization recipes. Given two monomers and
+reaction conditions, it predicts an alternating, random, or gradient regime and
+retrieves similar literature experiments. It combines XGBoost with a
+nearest-neighbour lookup, retaining predictions when the two agree. These are
+coarse architecture classes, not exact chain sequences or guarantees of synthesis
+success.
 
-Authors: Mara Schilling-Wilhelmi, Boris Bulgakov, Luc Patiny, Sarthak Kapoor,
-and Kevin Maik Jablonka. Contact: kevin.jablonka@uni-jena.de.
-Code license: [MIT](LICENSE). Paper: [Condition-aware prediction of copolymer
-architecture](https://doi.org/10.26434/chemrxiv.15004102/v2).
+**Authors:** Mara Schilling-Wilhelmi, Boris Bulgakov, Luc Patiny, Sarthak Kapoor,
+and Kevin Maik Jablonka. **Contact:** kevin.jablonka@uni-jena.de.
+[Paper](https://doi.org/10.26434/chemrxiv.15004102/v2) · [MIT license](LICENSE) ·
+[Installation and demo](REPRODUCIBILITY.md).
 
-The released bundle is in
-[`artifacts/model_bundle/`](02-reactivity-prediction/copol_prediction/artifacts/model_bundle/).
-Its `meta.json` records the creation timestamp as 2026-04-28 and defines the
-19 input features, hyperparameters, class weights, and calibration settings.
-Use the repository commit together with the bundle to identify a version;
-the live service may evolve independently.
+The [released bundle](02-reactivity-prediction/copol_prediction/artifacts/model_bundle/)
+was created on 2026-04-28. Its `meta.json` lists the 19 features, selected
+hyperparameters, class weights, and calibration settings. Identify a release by
+its repository commit; the live service may change.
 
 ## Prediction target
 
-Labels are derived from both reactivity ratios through the Mayo–Lewis
-composition curve, using
-[`mayo_lewis_classification.py`](02-reactivity-prediction/copol_prediction/mayo_lewis_classification.py).
-The name `r_product_class` is historical: product thresholds alone do not
-define the current labels. Let `I_rand` be the integrated absolute deviation
-from the diagonal and `d` the distance of the nearest interior diagonal
-crossing from feed fraction 0.5. Rules are applied in this order:
+Labels come from the [Mayo–Lewis composition curve](02-reactivity-prediction/copol_prediction/mayo_lewis_classification.py),
+using both reactivity ratios. The column name `r_product_class` is historical.
+Let `I_rand` be the integrated absolute deviation from the diagonal and `d` the
+distance of the nearest interior diagonal crossing from feed fraction 0.5.
+Apply these rules in order:
 
-1. Random (`1`) if `I_rand < 0.02`.
-2. Alternating (`0`) if `I_rand >= 0.14` and an interior crossing has `d <= 0.06`.
-3. Gradient (`2`) if `I_rand >= 0.08` and there is no interior crossing or `d >= 0.3`.
-4. Random (`1`) otherwise, including weak deviations from ideal randomness.
+1. Random (`1`): `I_rand < 0.02`.
+2. Alternating (`0`): `I_rand >= 0.14` and an interior crossing with `d <= 0.06`.
+3. Gradient (`2`): `I_rand >= 0.08` and no interior crossing or `d >= 0.3`.
+4. Random (`1`): all remaining cases, including weak deviations from randomness.
 
-These are operational, coarse labels inferred from reactivity ratios; they
-are not direct measurements of every synthesized chain's sequence.
+## Data and splits
 
-## Data and preprocessing
+The [curated dataset](01-data-extraction/README.md) contains 3,791 reactions from
+1,206 publications. Records in `processed_data.csv` retain source provenance.
+After removing invalid or missing reactivity-ratio products and missing
+required descriptors, the modelling dataset contains 3,387 reactions, each
+represented in both monomer orderings. Inputs describe monomer electronics,
+frontier-orbital differences, temperature, polymerization type, and solvent.
 
-The curated literature resource contains 3,791 reactions from 1,206 publications.
-Source provenance accompanies the records in `processed_data.csv`. The pipeline
-combines literature measurements, standardized chemical structures and conditions,
-and calculated monomer descriptors. See
-[`01-data-extraction/`](01-data-extraction/README.md) for extraction and curation.
-
-The released modelling splits contain 3,387 reaction IDs represented in both
-monomer orderings (6,774 rows). Invalid/missing reactivity-ratio products and
-rows with missing required descriptors are removed. The 19 inputs comprise
-monomer electronic descriptors, cross-monomer frontier-orbital differences,
-temperature, polymerization-type embeddings, and solvent descriptors. Their
-exact names and order are in the bundle's `meta.json`.
-
-### Split and scope of generalization
-
-| Split | Reaction IDs | Mirrored rows | Alternating / random / gradient rows |
+| Split | Reactions | Mirrored rows | Alternating / random / gradient rows |
 |---|---:|---:|---:|
 | Training | 2,369 | 4,738 | 230 / 2,044 / 2,464 |
 | Validation | 339 | 678 | 46 / 240 / 392 |
 | Test | 679 | 1,358 | 68 / 620 / 670 |
 
-The committed [`data_splits/`](02-reactivity-prediction/copol_prediction/artifacts/data_splits/)
-files are the reference partitions. `create_data_split.py` groups by
-`reaction_id`, reuses saved group IDs, or creates new approximately 70/10/20
-partitions with `GroupShuffleSplit` (seeds 42 and 43). It is not a class-stratified,
-chronological, or monomer-pair-disjoint split. Mirrored rows of a reaction stay
-together. Monomer pairs and publications can occur across partitions, so these
-results assess held-out reactions within the literature domain; they do not
-establish performance on wholly unseen monomer pairs or publications. Mirrored
-rows must not be treated as independent experimental replicates.
+Use the committed [split files](02-reactivity-prediction/copol_prediction/artifacts/data_splits/)
+to reproduce results. `create_data_split.py` reuses saved reaction IDs or uses
+`GroupShuffleSplit` (seeds 42 and 43) for approximately 70/10/20 partitions.
+Mirrored rows stay together and are not independent replicates. Monomer pairs
+and publications can cross partitions: the test measures performance on held-out
+reactions, not wholly unseen pairs or publications.
 
 ## Training
 
-[`train_final_model.py`](02-reactivity-prediction/copol_prediction/train_final_model.py)
-searches 100 configurations using five-fold `GroupKFold` by reaction ID within
-the training partition, optimizing weighted F1 with inverse-frequency class
-weights. The final classifier is fitted on the training partition. Isotonic
-probability calibration is fitted on the validation voting subset; the test
-partition is reserved for evaluation. The random seed is 42. Released metadata
-reports no Gaussian augmentation or synthetic negative data.
-
-Selected parameters: 500 boosting rounds, depth 6, learning rate 0.06,
-subsample 0.85, column subsample 0.9, minimum child weight 2, gamma 0.3,
-L1 regularization 0.3, and L2 regularization 2.0. Full search ranges are in the
-training script. Search uses `n_jobs=-1`; historical training hardware and
-wall-clock runtime have not been established from the released metadata.
+[Training](02-reactivity-prediction/copol_prediction/train_final_model.py) searches
+100 configurations with five-fold `GroupKFold` by reaction ID within the training
+set. It optimizes weighted F1, uses inverse-frequency class weights and seed 42,
+and runs the search with `n_jobs=-1`. The final classifier uses the training set;
+isotonic calibration uses the validation voting subset. The test set is reserved
+for evaluation. Released metadata reports no Gaussian augmentation or synthetic
+negative data. Search ranges are in the script; selected values are in `meta.json`.
 
 ## Evaluation
 
-The released plain classifier has test accuracy 0.740 and macro F1 0.708.
-The voting model retains 1,045 of 1,358 test rows (coverage 0.770), with
-macro recall 0.805, precision 0.768, and F1 0.785 on retained predictions.
-These conditional metrics should always be reported together with coverage.
-Alternating is the minority class (68 test rows) and has lower retained F1
-(0.722) than random (0.796) or gradient (0.836).
+| Test model | Coverage | Accuracy | Macro F1 |
+|---|---:|---:|---:|
+| XGBoost | 1.000 | 0.740 | 0.708 |
+| Voting | 0.770 (1,045/1,358 rows) | — | 0.785 |
 
-[`reproduce_paper_metrics.py`](02-reactivity-prediction/copol_prediction/reproduce_paper_metrics.py)
-recomputes the train/test table using the bundled classifier and a train-only
-fingerprint lookup pool, checking published values to tolerance 0.005. The API
-can use a larger literature lookup pool; that is distinct from the evaluation
-pool. See [REPRODUCE.md](02-reactivity-prediction/copol_prediction/REPRODUCE.md).
+Voting metrics describe retained predictions; report them with coverage.
+Retained macro recall is 0.805 and precision is 0.768. Class F1 scores are
+0.722 (alternating), 0.796 (random), and 0.836 (gradient).
+[Reproduction](02-reactivity-prediction/copol_prediction/REPRODUCE.md) uses a
+train-only lookup pool; the deployed API may search a larger literature pool.
 
-The manuscript additionally reports a nine-solvent historical case study
-(seven correct predictions and two abstentions), three prospective laboratory
-copolymerizations (two matching predictions), feature-importance analyses, and
-condition-feature ablations. Three prospective experiments provide limited
-evidence of laboratory utility, not a precise estimate of general success rate.
+The paper also reports feature-importance analyses, condition-feature ablations,
+a nine-solvent case study (seven correct, two abstentions), and three prospective
+syntheses (two matching predictions). Three syntheses give limited evidence of
+laboratory utility.
 
-## Limitations and responsible interpretation
+## Limits
 
-- Literature selection, publication practices, extraction errors, and uneven
-  coverage of monomers, mechanisms, and conditions can bias predictions.
-  Quality filtering and access to source precedents support review of a
-  prediction but do not eliminate these biases.
-- Class balancing addresses training imbalance; macro metrics expose differences
-  between classes. Neither ensures equal reliability across chemical subdomains.
-- Agreement between two predictors is an abstention rule, not proof of correctness
-  or a guarantee that a new recipe lies within the training domain.
-- Evaluate genuinely new monomer families, unusual conditions, and extrapolated
-  recipes experimentally. Interpret the output alongside retrieved precedents.
-- The original literature-extraction code uses the mutable model alias
-  `chatgpt-4o-latest`. A dated historical snapshot is not established by that
-  alias. Released curated data support downstream reproduction without replaying
-  extraction; exact historical API replay is not guaranteed.
+Literature selection, extraction errors, and uneven chemical coverage can bias
+predictions. Quality filtering, class weighting, and source retrieval help,
+but agreement between predictors does not establish reliability for an unfamiliar
+recipe. Inspect the precedents and test new monomer families and unusual
+conditions experimentally. Alternating is especially underrepresented: the test
+set contains only 68 mirrored rows.
 
-## Reproduction and reporting
-
-The [reviewer guide](REPRODUCIBILITY.md) supplies installation, demo, own-data
-instructions, measured resources, and links to evidence for journal reporting.
-It distinguishes newly measured inference resources from historical training
-and extraction resources.
+[Unresolved provenance](REPRODUCIBILITY.md#records-still-needed) includes the
+historical extraction-model snapshot, training resources, and optional training
+pruning. Released data and weights allow the demo to run without repeating
+extraction or training.
