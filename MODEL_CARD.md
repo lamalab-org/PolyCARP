@@ -28,7 +28,7 @@ Apply these rules in order:
 
 1. Random (`1`): `I_rand < 0.02`.
 2. Alternating (`0`): `I_rand >= 0.14` and an interior crossing with `d <= 0.06`.
-3. Gradient (`2`): `I_rand >= 0.08` and no interior crossing or `d >= 0.3`.
+3. Gradient (`2`): `I_rand >= 0.08` and either no interior crossing or `d >= 0.3`.
 4. Random (`1`): all remaining cases, including weak deviations from randomness.
 
 ## Data and splits
@@ -66,13 +66,13 @@ negative data. Search ranges are in the script; selected values are in `meta.jso
 
 ## Evaluation
 
-| Test model | Coverage | Accuracy | Macro F1 |
+| Test model | Coverage | Overall accuracy | Macro F1 |
 |---|---:|---:|---:|
 | XGBoost | 1.000 | 0.740 | 0.708 |
-| Voting | 0.770 (1,045/1,358 rows) | — | 0.785 |
+| Voting | 0.770 (1,045/1,358 rows) | 0.814 | 0.785 |
 
 Voting metrics describe retained predictions; report them with coverage.
-Retained macro recall is 0.805 and precision is 0.768. Class F1 scores are
+Retained macro recall (balanced accuracy) is 0.805 and macro precision is 0.768. Class F1 scores are
 0.722 (alternating), 0.796 (random), and 0.836 (gradient).
 [Reproduction](02-reactivity-prediction/copol_prediction/REPRODUCE.md) uses a
 train-only lookup pool; the deployed API may search a larger literature pool.
@@ -80,7 +80,9 @@ train-only lookup pool; the deployed API may search a larger literature pool.
 Validation connects statistical performance to chemical use:
 
 - **Condition ablation:** on 93 samples from 26 monomer pairs, including conditions
-  raises balanced accuracy from 0.55 to 0.64 and macro F1 from 0.69 to 0.77.
+  raises mean within-pair balanced accuracy from 0.551 to 0.635 and macro recall
+  from 0.689 to 0.767, with coverage increasing from 0.892 to 0.946
+  ([saved results](03-experiments/reaction_conditions_comparison/results/comparison_results.json)).
 - **Historical solvent series:** seven correct predictions and two abstentions
   across nine solvents for a pair excluded from training.
 - **Prospective synthesis:** two of three new laboratory copolymerizations match

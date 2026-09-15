@@ -17,8 +17,8 @@ For the released performance table, start with the
 
 ## Run a study
 
-Install the `training` extra, activate the environment, and run the relevant
-script. For example, from the repository root:
+Install the `training` extra and activate the environment. SHAP analyses also
+require `shap` (`uv pip install shap`). Run the relevant script. For example, from the repository root:
 
 ```bash
 python 03-experiments/permutation_importance/run_permutation_importance.py

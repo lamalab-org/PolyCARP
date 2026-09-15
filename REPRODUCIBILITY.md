@@ -32,6 +32,9 @@ coverage        0.770
 REPRODUCED: all values within ±0.005 of the paper table.
 ```
 
+`Acc` is the paper's label for per-class recall; its macro mean is balanced
+accuracy. Voting metrics describe retained predictions.
+
 The demo evaluates the saved training and test sets, using training rows for
 lookup. It leaves data and weights unchanged and exits nonzero if a table value
 differs by more than 0.005. [CI](.github/workflows/reproduce-paper.yml) runs the

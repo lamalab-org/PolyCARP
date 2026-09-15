@@ -64,8 +64,6 @@ uv run --locked --extra testing pytest tests
 }
 ```
 
-
-
 ## License
 
 MIT — see [LICENSE](LICENSE).

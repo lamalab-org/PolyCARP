@@ -48,13 +48,11 @@ Install the `training` extra and activate the environment. Run these commands
 from this directory as needed:
 
 ```bash
-python monomer_feature_calculation.py
 python create_data_split.py
 python train_final_model.py --hyperparam-iter 100
 ```
 
-Descriptor calculation requires XTB and caches results in
-[api/molecule_properties](api/molecule_properties/). The split script reuses
+These commands use the bundled data and descriptors. The split script reuses
 saved validation/test reaction IDs when available; otherwise it creates a grouped
 70/10/20 split. Mirrored monomer orderings stay in the same partition.
 
@@ -62,9 +60,21 @@ Training searches hyperparameters with five-fold cross-validation grouped by
 reaction ID, fits XGBoost on the training set, and calibrates on the validation
 voting subset. The test set supplies the final evaluation.
 
-These commands rewrite descriptors, splits, or model artifacts. Use a separate
+These commands rewrite splits or model artifacts. Use a separate
 checkout when developing a model alongside the released results. Run
 `python train_final_model.py --help` for training options.
+
+## Calculate new descriptors
+
+The API computes and caches descriptors in
+[api/molecule_properties](api/molecule_properties/); its
+[Docker setup](api/README.md) includes the quantum-chemistry dependencies.
+
+The standalone `monomer_feature_calculation.py` has separate settings in `main()`:
+its default input is `artificial_datapoints/augmented_temperature_only.csv` and
+its output is `output/molecule_properties/`. Set these paths for your dataset
+before running it. It requires Morfeus, XTB, QCEngine, geometric, and tqdm in
+addition to the training dependencies; see the [API environment](api/requirements.txt).
 
 ## Predict new recipes
 
