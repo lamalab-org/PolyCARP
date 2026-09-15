@@ -23,7 +23,7 @@ The package requires Python >=3.11; the environment below was tested.
 
 ```text
 Test — voting model (retained 1045/1358, coverage 0.770)
-Class             Acc    Prec      F1
+Class          Recall    Prec      F1
 Alternating     0.788   0.667   0.722
 Random          0.781   0.812   0.796
 Gradient        0.845   0.827   0.836
@@ -32,8 +32,7 @@ coverage        0.770
 REPRODUCED: all values within ±0.005 of the paper table.
 ```
 
-`Acc` is the paper's label for per-class recall; its macro mean is balanced
-accuracy. Voting metrics describe retained predictions.
+Macro recall is balanced accuracy. Voting metrics describe retained predictions.
 
 The demo evaluates the saved training and test sets, using training rows for
 lookup. It leaves data and weights unchanged and exits nonzero if a table value

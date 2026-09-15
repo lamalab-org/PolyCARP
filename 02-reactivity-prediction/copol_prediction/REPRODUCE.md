@@ -15,9 +15,9 @@ measured runtimes, and tested software versions;
 
 ## Metrics
 
-The paper and script label recall as `Acc` and store it under the JSON key
-`acc`. This is recall for each class, not overall accuracy. All voting metrics
-below are calculated **after abstentions are removed**.
+The table and script label per-class recall as `Recall`. Saved JSON retains the
+legacy key `acc` for compatibility. All voting metrics below are calculated
+**after abstentions are removed**.
 
 The voting model retains predictions when XGBoost and the nearest-neighbour
 lookup agree. Lookup uses training rows only, keeping evaluation separate from
@@ -25,7 +25,7 @@ the API's potentially larger literature pool.
 
 | Quantity | Definition |
 |---|---|
-| `Acc` (per class) | Recall: correct predictions of class c / retained rows whose true class is c |
+| `Recall` (per class) | correct predictions of class c / retained rows whose true class is c |
 | `Prec` (per class) | Precision: correct predictions of class c / retained rows predicted as c |
 | `F1` | Harmonic mean of precision and recall |
 | `coverage` | Retained predictions divided by all samples in the split |

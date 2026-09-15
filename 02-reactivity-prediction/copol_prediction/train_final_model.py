@@ -20,6 +20,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.metrics import (
+    accuracy_score,
     balanced_accuracy_score,
     f1_score,
     precision_recall_fscore_support,
@@ -816,7 +817,7 @@ def save_train_test_performance_latex_table(
     Save a LaTeX table with per-class Train/Test performance for voting predictions.
 
     Coverage is computed as retained voting predictions / full split size.
-    Support is reported as retained/full counts per class.
+    Support counts samples in the full split; metrics use retained predictions.
     """
     from analysis.analyze_model import compute_naive_baseline_predictions_with_similarity
 
@@ -865,11 +866,13 @@ def save_train_test_performance_latex_table(
         )
 
         if retained_n == 0:
-            macro_acc = float("nan")
+            accuracy = float("nan")
+            macro_recall = float("nan")
             macro_prec = float("nan")
             macro_f1 = float("nan")
         else:
-            macro_acc = float(balanced_accuracy_score(y_true, y_pred))
+            accuracy = float(accuracy_score(y_true, y_pred))
+            macro_recall = float(balanced_accuracy_score(y_true, y_pred))
             macro_prec = float(precision_score(y_true, y_pred, average="macro", zero_division=0))
             macro_f1 = float(f1_score(y_true, y_pred, average="macro", zero_division=0))
 
@@ -883,7 +886,8 @@ def save_train_test_performance_latex_table(
             "f1_c": f1_c,
             "support_full": support_full,
             "support_retained": support_retained,
-            "macro_acc": macro_acc,
+            "accuracy": accuracy,
+            "macro_recall": macro_recall,
             "macro_prec": macro_prec,
             "macro_f1": macro_f1,
         }
@@ -908,14 +912,16 @@ def save_train_test_performance_latex_table(
         f.write("\\centering\n")
         f.write(
             "\\caption{Per-class training and test performance of the voting model "
-            "(XGBoost + nearest-neighbor lookup). Support denotes the number of "
-            "samples in the full split, and coverage denotes the retained prediction "
-            "fraction after voting agreement.}\n"
+            "(XGBoost + nearest-neighbor lookup). Recall, precision, and F1 use "
+            "predictions retained after voting agreement. Macro denotes the unweighted "
+            "mean across classes; macro recall is balanced accuracy. Support counts "
+            "samples in the full split; coverage is the fraction retained. "
+            f"Overall test accuracy on retained predictions is {fmt(test_stats['accuracy'])}.}}\n"
         )
         f.write("\\begin{tabular}{llccccc}\n")
         f.write("\\toprule\n")
         f.write(
-            "\\textbf{Split} & \\textbf{Class} & \\textbf{Acc} & \\textbf{Prec} & \\textbf{F1} & "
+            "\\textbf{Split} & \\textbf{Class} & \\textbf{Recall} & \\textbf{Prec} & \\textbf{F1} & "
             "\\textbf{Support} & \\textbf{Coverage} \\\\\n"
         )
         f.write("\\midrule\n")
@@ -938,7 +944,7 @@ def save_train_test_performance_latex_table(
 
             total_support = f"{split_stats['full_n']}"
             f.write(
-                f"{split_label} & Macro & {fmt(split_stats['macro_acc'])} & "
+                f"{split_label} & Macro & {fmt(split_stats['macro_recall'])} & "
                 f"{fmt(split_stats['macro_prec'])} & {fmt(split_stats['macro_f1'])} & "
                 f"{total_support} & {cov_str} \\\\\n"
             )

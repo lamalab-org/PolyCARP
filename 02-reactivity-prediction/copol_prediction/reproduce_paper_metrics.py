@@ -288,7 +288,7 @@ def main() -> int:
             f"\n{'=' * 68}\n{split} — voting model "
             f"(retained {agree.sum()}/{len(agree)}, coverage {coverage:.3f})\n{'=' * 68}"
         )
-        print(f"{'Class':<13}{'Acc':>8}{'Prec':>8}{'F1':>8}   {'paper Acc/Prec/F1':>22}")
+        print(f"{'Class':<13}{'Recall':>8}{'Prec':>8}{'F1':>8}   {'paper Recall/Prec/F1':>22}")
         for name in CLASS_NAMES + ["Macro"]:
             m = rows[name]
             p_acc, p_prec, p_f1 = PAPER[split][name]
