@@ -1,0 +1,54 @@
+{
+  "title": "PolyCARP: condition-aware prediction of copolymer architecture",
+  "upload_type": "software",
+  "version": "1.0.1",
+  "access_right": "open",
+  "license": "mit",
+  "language": "eng",
+  "description": "<p>PolyCARP predicts copolymer architecture from monomer structures and reaction conditions and retrieves similar literature experiments. It combines an XGBoost classifier with a nearest-neighbour lookup to distinguish alternating, random, and gradient regimes. This release includes extraction and modelling code, the frozen paper dataset, trained model, evaluation splits, and a demo that reproduces the paper's performance table. The underlying dataset contains 3,791 copolymerizations from 1,206 publications.</p><p>Prepared for the manuscript <em>Condition-aware prediction of copolymer architecture</em>. The release provides installation instructions, a model card, and scripts for reproducing the reported evaluation. Predictions retained by the voting model have test balanced accuracy (macro recall) of 0.805 and overall accuracy of 0.814 at 77% coverage.</p>",
+  "creators": [
+    {
+      "name": "Schilling-Wilhelmi, Mara",
+      "orcid": "0009-0007-4392-5918",
+      "affiliation": "Laboratory of Organic and Macromolecular Chemistry (IOMC), Friedrich Schiller University Jena, Humboldtstrasse 10, 07743 Jena, Germany"
+    },
+    {
+      "name": "Bulgakov, Boris",
+      "orcid": "0000-0001-6208-3962",
+      "affiliation": "Laboratory of Organic and Macromolecular Chemistry (IOMC) & Jena Center for Soft Matter (JCSM), Friedrich Schiller University Jena, 07743 Jena, Germany"
+    },
+    {
+      "name": "Patiny, Luc",
+      "orcid": "0000-0002-4943-2643",
+      "affiliation": "Zakodium Sàrl, Lonay, Switzerland"
+    },
+    {
+      "name": "Kapoor, Sarthak",
+      "orcid": "0000-0002-1889-6998",
+      "affiliation": "Physics Department and CSMB, Humboldt-Universität zu Berlin, Zum Großen Windkanal 2, D-12489 Berlin, Germany"
+    },
+    {
+      "name": "Jablonka, Kevin Maik",
+      "orcid": "0000-0003-4894-4660",
+      "affiliation": "Laboratory of Organic and Macromolecular Chemistry (IOMC) & Jena Center for Soft Matter (JCSM), Friedrich Schiller University Jena, 07743 Jena, Germany; Center for Energy and Environmental Chemistry Jena (CEEC Jena) & Helmholtz Institute for Polymers in Energy Applications Jena (HIPOLE Jena), 07743 Jena, Germany"
+    }
+  ],
+  "keywords": [
+    "copolymer",
+    "polymer informatics",
+    "reactivity ratios",
+    "architecture prediction",
+    "machine learning",
+    "XTB",
+    "XGBoost",
+    "cheminformatics"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "10.26434/chemrxiv.15004102/v2",
+      "relation": "isSupplementTo",
+      "scheme": "doi",
+      "resource_type": "publication-preprint"
+    }
+  ]
+}
