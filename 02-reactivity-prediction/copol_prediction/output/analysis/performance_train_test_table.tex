@@ -1,9 +1,9 @@
 \begin{table}[h!]
 \centering
-\caption{Per-class training and test performance of \sysname{}. Support denotes the number of samples in the full split, and coverage denotes the retained predictions after voting agreement.}
+\caption{Per-class training and test performance of \sysname{}. Recall, precision, and F1 use predictions retained after voting agreement. Macro denotes the unweighted mean across classes; macro recall is balanced accuracy. Support counts samples in the full split; coverage is the fraction retained. Overall test accuracy on retained predictions is 0.814.}
 \begin{tabular}{llccccc}
 \toprule
-\textbf{Split} & \textbf{Class} & \textbf{Acc} & \textbf{Prec} & \textbf{F1} & \textbf{Support} & \textbf{Coverage} \\
+\textbf{Split} & \textbf{Class} & \textbf{Recall} & \textbf{Prec} & \textbf{F1} & \textbf{Support} & \textbf{Coverage} \\
 \midrule
 Train & Alternating & 1.000 & 0.957 & 0.978 & 230 & 0.920 \\
  & Random & 0.984 & 0.982 & 0.983 & 2044 & 0.920 \\

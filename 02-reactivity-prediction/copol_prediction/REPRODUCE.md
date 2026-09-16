@@ -1,101 +1,59 @@
-# Reproducing the paper's model-performance results
+# Reproduce the paper's performance table
 
-This reproduces **Table `tab:train_test_voting_performance`** from the paper —
-the per-class accuracy, precision, F1 and coverage of the PolyCarp voting model
-on the train and test splits.
-
-Nothing is retrained. The script evaluates the **released model bundle**
-(`artifacts/model_bundle/`) against the **released data splits**
-(`artifacts/data_splits/`), both of which are committed to this repo.
-
-## Prerequisites
+The demo evaluates the released model on the committed train/test splits.
+Follow the [installation guide](../../REPRODUCIBILITY.md), then run from the
+repository root:
 
 ```bash
-# from the repo root
-pip install -e .[testing]      # core deps + rdkit + xgboost + pandas
+uv run --locked --extra reproduction python 02-reactivity-prediction/copol_prediction/reproduce_paper_metrics.py
 ```
 
-The model bundle and data splits are already in the repo — no download needed.
+It checks every cell of `tab:train_test_voting_performance` to a tolerance of
+0.005 and exits nonzero on a mismatch. The guide includes expected output,
+measured runtimes, and tested software versions;
+[full verification output](../../docs/reproducibility/demo-output.txt) is also saved.
 
-## 1. Quick check: does the model run on the data?
+## Metrics
 
-```python
-# from the repo root
-import warnings; warnings.filterwarnings("ignore")
-import pandas as pd
-from copolpredictor.inference import CopolymerPredictor
-from sklearn.metrics import accuracy_score
+The table and script label per-class recall as `Recall`. Saved JSON retains the
+legacy key `acc` for compatibility. All voting metrics below are calculated
+**after abstentions are removed**.
 
-P = CopolymerPredictor("02-reactivity-prediction/copol_prediction/artifacts/model_bundle")
-for split in ["train", "test"]:
-    df = pd.read_csv(f"02-reactivity-prediction/copol_prediction/artifacts/data_splits/{split}.csv")
-    df = df.dropna(subset=P.features + ["r_product_class"])
-    acc = accuracy_score(df["r_product_class"].astype(int), P.predict(df[P.features]))
-    print(f"{split}: plain-XGBoost accuracy = {acc:.4f}")
-```
-
-Expected — matching `artifacts/model_bundle/all_metrics.txt`:
-
-```
-train: plain-XGBoost accuracy = 0.9217
-test:  plain-XGBoost accuracy = 0.7401
-```
-
-## 2. Reproduce the paper table
-
-```bash
-cd 02-reactivity-prediction/copol_prediction
-python reproduce_paper_metrics.py
-```
-
-This computes the **voting** model — XGBoost combined with a nearest-neighbour
-RDKit-fingerprint lookup, keeping only predictions where the two agree
-(`coverage` = retained fraction) — and prints per-class accuracy/precision/F1
-for the train and test splits next to the paper's published values.
-
-Expected output (every cell within ±0.005 of the paper):
-
-```
-Test — voting model (retained 1045/1358, coverage 0.770)
-Class             Acc    Prec      F1        paper Acc/Prec/F1
-Alternating     0.788   0.667   0.722    0.788/0.667/0.722  ok
-Random          0.781   0.812   0.796    0.781/0.812/0.796  ok
-Gradient        0.845   0.827   0.836    0.845/0.827/0.836  ok
-Macro           0.805   0.768   0.785    0.805/0.768/0.785  ok
-coverage        0.770                    0.770        ok
-...
-REPRODUCED: all values within ±0.005 of the paper table.
-```
-
-The script exits non-zero if any value deviates by more than 0.005, so it
-doubles as a regression test for the released artifacts.
-
-## 3. Reproduce against the deployed API
-
-The same table can be reproduced with the XGBoost predictions served by a
-running API instead of the local bundle — a check that the deployment serves
-the identical model:
-
-```bash
-# with the API running (locally or via the GHCR image), from copol_prediction/
-python reproduce_paper_metrics.py --api http://localhost:8000
-```
-
-`--api` routes the XGBoost half through `POST /predict/batch`. The
-nearest-neighbour lookup is a deterministic fingerprint baseline (not the
-trained model), so it is always computed locally against the train-only pool
-the paper uses — keeping the comparison apples-to-apples regardless of how the
-deployed API configures its own lookup pool.
-
-## What the numbers mean
+The voting model retains predictions when XGBoost and the nearest-neighbour
+lookup agree. Lookup uses training rows only, keeping evaluation separate from
+the API's potentially larger literature pool.
 
 | Quantity | Definition |
 |---|---|
-| `Acc` (per class) | recall — fraction of that class's retained samples predicted correctly |
-| `Prec` (per class) | precision — fraction of retained predictions for that class that are correct |
-| `coverage` | retained predictions ÷ all samples in the split (XGBoost and lookup agree) |
-| `Macro` | unweighted mean across the three classes |
+| `Recall` (per class) | correct predictions of class c / retained rows whose true class is c |
+| `Prec` (per class) | Precision: correct predictions of class c / retained rows predicted as c |
+| `F1` | Harmonic mean of precision and recall |
+| `coverage` | Retained predictions divided by all samples in the split |
+| `Macro` | Unweighted mean of each metric across the three classes; macro recall is balanced accuracy |
 
-The published metrics also live with the artifact itself:
-`artifacts/model_bundle/voting_test_metrics.json` (test voting metrics) and
-`artifacts/model_bundle/all_metrics.txt` (plain-XGBoost train/test breakdown).
+For example, the saved test confusion matrix has 33 retained alternating rows,
+26 predicted correctly: recall is `26 / 33 = 0.788`. Overall voting accuracy is
+`851 / 1045 = 0.814`; macro recall is `0.805`. These have different denominators.
+See [the metric calculation](reproduce_paper_metrics.py) and
+[saved confusion matrices](artifacts/paper_metrics.json).
+
+Report voting metrics together with coverage. Plain-XGBoost accuracy is 0.9217
+on training data and 0.7401 on test data. The voting model's test macro F1 is
+0.785 at coverage 0.770. Artifact metrics are saved in
+[all_metrics.txt](artifacts/model_bundle/all_metrics.txt) and
+[voting_test_metrics.json](artifacts/model_bundle/voting_test_metrics.json).
+
+## Compare a running API
+
+With the environment activated, run from this directory:
+
+```bash
+python reproduce_paper_metrics.py --api http://localhost:8000
+```
+
+This calls `POST /predict/batch` for XGBoost predictions and computes the
+train-only lookup locally, so both modes use the same evaluation protocol.
+See [API setup](api/README.md).
+
+To export predictions, add `--json PATH`. This option skips the nonzero exit on
+metric drift; use the default command for the reproducibility check.

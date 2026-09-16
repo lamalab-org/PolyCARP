@@ -1,0 +1,23 @@
+name: Reproduce paper metrics
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.8.16"
+      - name: Install locked reproduction environment
+        run: uv sync --locked --python 3.12 --extra reproduction
+      - name: Recompute and check the published table
+        run: uv run --locked --extra reproduction python 02-reactivity-prediction/copol_prediction/reproduce_paper_metrics.py
