@@ -1,0 +1,29 @@
+{
+  "paper_doi": "10.26434/chemrxiv.15004102/v2",
+  "source_study_doi": "10.1002/pol.1973.170110204",
+  "related_training_study": {
+    "doi": "10.1002/pol.1973.170111201",
+    "reaction_id": 443,
+    "qualification": "Minsk's later high-dilution study, not the original solvent table. Matching encoded benzene/90 C inputs do not prove identical physical experiments because concentration is not a model feature."
+  },
+  "claim": "Seven retained predictions match the reported regime; DMSO and bis(2-methoxyethyl) ether abstain because classifier and lookup disagree.",
+  "provenance": "Published solvent-case outcomes, transcribed independently of the plotting CSV. Solvent identities follow the committed case-study script; the manuscript's 2-methoxyethanol versus 2-(2-methoxyethoxy)ethanol naming difference still needs scientific reconciliation. These are paper claims to test, not newly verified experimental ground truth. Do not update expectations just to match a new model output.",
+  "reaction": {
+    "monomer1_smiles": "C=CC(N)=O",
+    "monomer2_smiles": "C=Cc1ccccc1",
+    "temperature": 90.0,
+    "method": "solvent",
+    "polytype": "free radical"
+  },
+  "cases": [
+    {"solvent_name": "Benzene", "solvent_smiles": "c1ccccc1", "expected_voting_class": "random"},
+    {"solvent_name": "o-Dichlorobenzene", "solvent_smiles": "c1ccc(c(c1)Cl)Cl", "expected_voting_class": "random"},
+    {"solvent_name": "Benzonitrile", "solvent_smiles": "C(#N)c1ccccc1", "expected_voting_class": "random"},
+    {"solvent_name": "Dioxane", "solvent_smiles": "C1COCCO1", "expected_voting_class": "random"},
+    {"solvent_name": "Bis(2-methoxyethyl) ether", "solvent_smiles": "COCCOCCOC", "expected_voting_class": null},
+    {"solvent_name": "Ethanol", "solvent_smiles": "CCO", "expected_voting_class": "alternating"},
+    {"solvent_name": "2-(2-Methoxyethoxy)ethanol", "solvent_smiles": "COCCOCCO", "expected_voting_class": "alternating"},
+    {"solvent_name": "DMSO", "solvent_smiles": "CS(=O)C", "expected_voting_class": null},
+    {"solvent_name": "Methanol", "solvent_smiles": "CO", "expected_voting_class": "alternating"}
+  ]
+}

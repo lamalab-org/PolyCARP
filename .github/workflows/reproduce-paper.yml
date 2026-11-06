@@ -18,6 +18,8 @@ jobs:
         with:
           version: "0.8.16"
       - name: Install locked reproduction environment
-        run: uv sync --locked --python 3.12 --extra reproduction
+        run: uv sync --locked --python 3.12 --extra reproduction --extra testing
       - name: Recompute and check the published table
-        run: uv run --locked --extra reproduction python 02-reactivity-prediction/copol_prediction/reproduce_paper_metrics.py
+        run: uv run --locked --extra reproduction --extra testing python 02-reactivity-prediction/copol_prediction/reproduce_paper_metrics.py
+      - name: Check solvent cases, figure inputs and target consistency
+        run: uv run --locked --extra reproduction --extra testing pytest tests/test_paper_solvent.py tests/test_api_parity.py -k 'paper_solvent' -v

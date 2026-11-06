@@ -21,6 +21,7 @@ doesn't install API deps stays green.
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import random
@@ -69,7 +70,10 @@ if not TEST_CSV.exists():
 
 import app as api_app  # noqa: E402
 
+from copolpredictor.case_studies import case_study_features  # noqa: E402
 from copolpredictor.inference import CopolymerPredictor  # noqa: E402
+
+PAPER_SOLVENT_CASES = json.loads((ROOT / "tests/fixtures/paper_solvent_cases.json").read_text())
 
 # Observed values at the time of writing (Opus 4.7 fix for feature-name
 # mismatch): direct accuracy 0.7401, API↔direct agreement 96/100, p95
@@ -98,6 +102,78 @@ def test_df():
 def client():
     with TestClient(api_app.app) as c:
         yield c
+
+
+@pytest.mark.parametrize(
+    "case", PAPER_SOLVENT_CASES["cases"], ids=lambda case: case["solvent_name"]
+)
+def test_regenerated_solvent_plot_matches_api(client, predictor, case):
+    """The plotted features, classifier and agreement must use the live API logic."""
+    table = pd.read_csv(
+        ROOT / "03-experiments/case_studies/solvent/case_study_features.csv"
+    ).set_index("solvent_name")
+    row = table.loc[case["solvent_name"]]
+    payload = {**PAPER_SOLVENT_CASES["reaction"], "solvent_smiles": case["solvent_smiles"]}
+    response = client.post("/preprocess_all", json=payload)
+    assert response.status_code == 200, response.text
+    prepared = response.json()
+    assert prepared["success"], prepared.get("error")
+    for feature in predictor.features:
+        assert row[feature] == pytest.approx(prepared["features"][feature], abs=1e-10)
+    response = client.post("/predict", json={"features": prepared["features"]})
+    assert response.status_code == 200, response.text
+    predicted = response.json()
+    assert row["current_model_class"] == predicted["predicted_class"]
+    assert row["current_model_confidence"] == pytest.approx(predicted["confidence"])
+    assert row["current_lookup_class"] == prepared["lookup_class"]
+    assert bool(row["current_agreement"]) == (
+        predicted["predicted_class"] == prepared["lookup_class"]
+    )
+
+
+@pytest.mark.parametrize(
+    "case", PAPER_SOLVENT_CASES["cases"], ids=lambda case: case["solvent_name"]
+)
+@pytest.mark.parametrize("reverse_monomers", [False, True], ids=["forward", "reverse"])
+def test_paper_solvent_outcome_matches_published_case(
+    client, predictor, case, reverse_monomers, monkeypatch
+):
+    """Exercise local preprocessing, real model and real lookup against paper claims.
+
+    No production service or new XTB run is needed: both monomers have committed
+    cached descriptors. Expected classes are independent of the plotting CSV.
+    Paper abstention means model/lookup disagreement, not a confidence threshold.
+    """
+
+    def no_live_xtb(*args, **kwargs):
+        raise AssertionError("Paper regression must use the committed monomer descriptor cache")
+
+    monkeypatch.setattr(api_app, "calculate_monomer_features", no_live_xtb)
+    payload = {**PAPER_SOLVENT_CASES["reaction"], "solvent_smiles": case["solvent_smiles"]}
+    if reverse_monomers:
+        payload["monomer1_smiles"], payload["monomer2_smiles"] = (
+            payload["monomer2_smiles"],
+            payload["monomer1_smiles"],
+        )
+    response = client.post("/preprocess_all", json=payload)
+    assert response.status_code == 200, response.text
+    prepared = response.json()
+    assert prepared["success"], prepared.get("error")
+    # Missing descriptors must fail before the predictor silently fills zeros.
+    case_study_features(pd.DataFrame([prepared["features"]]), predictor.features)
+    lookup = prepared["lookup_class_name"]
+    assert lookup in {"alternating", "random", "gradient"}, "Literature lookup unavailable"
+    response = client.post("/predict", json={"features": prepared["features"]})
+    assert response.status_code == 200, response.text
+    model = response.json()["predicted_class_name"]
+    actual = model if model == lookup else None
+    expected = case["expected_voting_class"]
+    assert actual == expected, (
+        f"{case['solvent_name']}: paper expects {expected or 'abstention'}, "
+        f"current model={model}, lookup={lookup}, voting={actual or 'abstention'}. "
+        "Reconcile the paper, class definitions and model artifacts; do not replace "
+        "the paper expectation with the observed output just to pass this check."
+    )
 
 
 def test_paper_metrics_endpoint(client):

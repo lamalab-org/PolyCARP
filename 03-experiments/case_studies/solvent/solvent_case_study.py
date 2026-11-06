@@ -5,7 +5,8 @@ This script creates a plot showing:
 - X-axis: Discrete positions for each case study solvent (ordered by minimum similarity)
 - Y-axis: Monomer Tanimoto similarity (continuous)
 - Background: Nearest neighbor points from dataset with class colors at low opacity
-- Case study points: colored by predicted class, shape by correctness
+- Case study points: color denotes correctness, shape denotes predicted class,
+  faded markers denote model/lookup disagreement
 - Three molecule boxes showing examples at different similarity levels
 """
 
@@ -14,15 +15,17 @@ import numpy as np
 import pandas as pd
 
 matplotlib.use("Agg")
+import json
 import os
 import random
 import sys
+from functools import lru_cache
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import AnnotationBbox, OffsetImage
 from rdkit import Chem
-from rdkit.Chem import AllChem, DataStructs, Draw
+from rdkit.Chem import AllChem, DataStructs, Draw, rdFingerprintGenerator
 from sklearn.neighbors import NearestNeighbors
 
 # Add paths to import copolpredictor and copol_prediction as package
@@ -36,9 +39,20 @@ sys.path.insert(0, str(Path(PROJECT_ROOT) / "src"))
 sys.path.insert(
     0, str(Path(PROJECT_ROOT) / "02-reactivity-prediction" / "copol_prediction" / "analysis")
 )
+API_DIR = Path(PROJECT_ROOT) / "02-reactivity-prediction" / "copol_prediction" / "api"
+sys.path.insert(0, str(API_DIR))
 
+from app import (
+    assemble_model_features,
+    calculate_solvent_features,
+    extract_monomer_features_for_model,
+    load_monomer_features,
+)
+from baseline_lookup import find_top_k_nearest_neighbors
+from copol_prediction.mayo_lewis_classification import classify_reactivity_curve
 from plot_config import setup_plot_style
 
+from copolpredictor.case_studies import case_study_features
 from copolpredictor.inference import CopolymerPredictor
 
 # Paths (use final model bundle = newest model)
@@ -112,19 +126,54 @@ MONOMER_BINS = [0.0, 0.3, 0.5, 0.7, 0.85, 1.0]
 MONOMER_BIN_LABELS = ["0.0-0.3", "0.3-0.5", "0.5-0.7", "0.7-0.85", "0.85-1.0"]
 
 
+def rebuild_case_features(df_case):
+    """Use committed descriptors and the API assembler; never run live XTB."""
+    if not df_case["solvent_name"].is_unique or set(df_case["solvent_name"]) != set(CASE_SOLVENTS):
+        raise ValueError("Expected exactly one row for every case-study solvent")
+    df_case = df_case.set_index("solvent_name").loc[CASE_SOLVENTS].reset_index()
+    monomers = []
+    for smiles in (MONOMER1_SMILES, MONOMER2_SMILES):
+        data = load_monomer_features(smiles, API_DIR / "molecule_properties")
+        if data is None:
+            raise ValueError(f"Missing committed monomer descriptors for {smiles}")
+        monomers.append(extract_monomer_features_for_model(data))
+    method = json.loads((API_DIR / "data/method_emb_pca_values.json").read_text())["solvent"]
+    polytype = json.loads((API_DIR / "data/polytype_emb_pca_values.json").read_text())[
+        "free radical"
+    ]
+    for idx, row in df_case.iterrows():
+        features = assemble_model_features(
+            monomers[0],
+            monomers[1],
+            calculate_solvent_features(SOLVENT_SMILES[row["solvent_name"]]),
+            polytype,
+            method,
+            float(row["temperature"]),
+        )
+        for key, value in features.items():
+            df_case.loc[idx, key] = value
+    return df_case
+
+
+@lru_cache(maxsize=20000)
+def molecule_fingerprint(smiles, radius, n_bits):
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return None
+    return rdFingerprintGenerator.GetMorganGenerator(radius=radius, fpSize=n_bits).GetFingerprint(
+        mol
+    )
+
+
 def calculate_tanimoto_similarity(
     smiles1: str, smiles2: str, radius: int = 2, n_bits: int = 2048
 ) -> float:
     """Calculate Tanimoto similarity between two molecules using Morgan fingerprints."""
     try:
-        mol1 = Chem.MolFromSmiles(smiles1)
-        mol2 = Chem.MolFromSmiles(smiles2)
-
-        if mol1 is None or mol2 is None:
+        fp1 = molecule_fingerprint(smiles1, radius, n_bits)
+        fp2 = molecule_fingerprint(smiles2, radius, n_bits)
+        if fp1 is None or fp2 is None:
             return 0.0
-
-        fp1 = AllChem.GetMorganFingerprintAsBitVect(mol1, radius, nBits=n_bits)
-        fp2 = AllChem.GetMorganFingerprintAsBitVect(mol2, radius, nBits=n_bits)
 
         return DataStructs.TanimotoSimilarity(fp1, fp2)
     except Exception as e:
@@ -221,59 +270,42 @@ def main():
     print(f"Training data shape: {df_train.shape}")
 
     print("\nLoading case study features...")
-    df_case = pd.read_csv(CASE_STUDY_PATH)
+    df_case = rebuild_case_features(pd.read_csv(CASE_STUDY_PATH))
     print(f"Case study data shape: {df_case.shape}")
 
-    # Extract case study info
-    case_minsk_classes = df_case["minsk_class"].tolist()
-    # Optional: whether Final Model agrees with Lookup (voting definition)
-    # If missing, treat all as agreement=True.
-    case_agreement = (
-        df_case["agreement"].tolist() if "agreement" in df_case.columns else [True] * len(df_case)
-    )
-
-    # Load model and make predictions
+    # Derive reference labels from measured ratios with the training classifier.
+    # minsk_class in the CSV is historical and is not used as ground truth.
+    ratios = case_study_features(df_case, ["r1", "r2"])
+    if (ratios < 0).any().any():
+        raise ValueError("Experimental reactivity ratios must be nonnegative")
+    case_experimental_classes = [
+        classify_reactivity_curve(r1, r2)["class_id"]
+        for r1, r2 in ratios.itertuples(index=False, name=None)
+    ]
+    # Fail rather than silently substituting historical predictions when the
+    # model or descriptor schema changes. Such a plot is not a reproduction.
     print(f"\nLoading model from {args.model_path}...")
-    try:
-        predictor = CopolymerPredictor(args.model_path)
-        print(f"  ✓ Model loaded ({len(predictor.features)} features)")
-
-        # Prepare features for prediction
-        # Get required features from model
-        required_features = predictor.features
-
-        # Check which features are available in df_case
-        missing_features = set(required_features) - set(df_case.columns)
-        if missing_features:
-            print(f"  ⚠️  Warning: Missing features: {missing_features}")
-            print("   Attempting to continue with available features...")
-            available_features = [f for f in required_features if f in df_case.columns]
-            if len(available_features) < len(required_features) * 0.8:
-                raise ValueError(f"Too many missing features: {len(missing_features)} missing")
-            required_features = available_features
-
-        # Prepare feature matrix
-        X_case = df_case[required_features].copy()
-
-        # Fill NaN values if any
-        if X_case.isna().sum().sum() > 0:
-            print("  ⚠️  Warning: Found NaN values, filling with 0")
-            X_case = X_case.fillna(0)
-
-        # Make predictions
-        print("  🔮 Making predictions...")
-        y_pred = predictor.predict(X_case)
-        case_model_classes = y_pred.tolist()
-
-        print(f"  ✓ Predictions made: {case_model_classes}")
-
-    except Exception as e:
-        print(f"  ✗ Error loading model or making predictions: {e}")
-        print("  Falling back to predictions from CSV...")
-        import traceback
-
-        traceback.print_exc()
-        case_model_classes = df_case["model_class"].tolist()
+    predictor = CopolymerPredictor(args.model_path)
+    X_case = case_study_features(df_case, predictor.features)
+    result = predictor.predict_with_confidence(X_case)
+    case_model_classes = result["predictions"].tolist()
+    lookup_classes = []
+    for solvent in original_case_solvents:
+        neighbors = find_top_k_nearest_neighbors(
+            MONOMER1_SMILES, MONOMER2_SMILES, SOLVENT_SMILES[solvent], df_train, k=1
+        )
+        if not neighbors:
+            raise ValueError(f"No lookup prediction for {solvent}")
+        lookup_classes.append(int(neighbors[0]["predicted_class"]))
+    case_agreement = [model == lookup for model, lookup in zip(case_model_classes, lookup_classes)]
+    # Keep historical output columns intact, and explicitly name regenerated results.
+    df_case["experimental_class"] = case_experimental_classes
+    df_case["current_model_class"] = case_model_classes
+    df_case["current_model_confidence"] = result["confidence"]
+    df_case["current_lookup_class"] = lookup_classes
+    df_case["current_agreement"] = case_agreement
+    df_case.to_csv(CASE_STUDY_PATH, index=False)
+    print(f"  ✓ Predictions made: {case_model_classes}")
 
     print(f"\nCase study solvents: {original_case_solvents}")
 
@@ -402,13 +434,13 @@ def main():
         print(f"  {i}: {s['name']} (min_sim={s['min_sim']:.3f})")
 
     # Reorder case study data to match new solvent order (by matching names)
-    reordered_minsk_classes = [0] * len(original_case_solvents)
+    reordered_experimental_classes = [0] * len(original_case_solvents)
     reordered_model_classes = [0] * len(original_case_solvents)
     reordered_agreement = [True] * len(original_case_solvents)
 
     for old_idx, old_name in enumerate(original_case_solvents):
         new_idx = reordered_solvents.index(old_name)
-        reordered_minsk_classes[new_idx] = case_minsk_classes[old_idx]
+        reordered_experimental_classes[new_idx] = case_experimental_classes[old_idx]
         reordered_model_classes[new_idx] = case_model_classes[old_idx]
         reordered_agreement[new_idx] = bool(case_agreement[old_idx])
 
@@ -492,7 +524,7 @@ def main():
     for old_idx in visible_indices:
         new_x = old_to_new_pos[old_idx]
         pred_class = reordered_model_classes[old_idx]  # same as baseline when agree
-        is_correct = reordered_minsk_classes[old_idx] == pred_class
+        is_correct = reordered_experimental_classes[old_idx] == pred_class
         agrees_with_lookup = bool(reordered_agreement[old_idx])
         color = CLASS_COLORS[0] if is_correct else CLASS_COLORS[2]
         marker = CLASS_MARKERS[pred_class]
@@ -915,11 +947,19 @@ def main():
     # Performance (final model only, no Lookup)
     n_total = len(case_solvents_ordered)
     model_correct = sum(
-        1 for i in range(n_total) if reordered_minsk_classes[i] == reordered_model_classes[i]
+        1 for i in range(n_total) if reordered_experimental_classes[i] == reordered_model_classes[i]
     )
 
     print(f"\nPerformance of final model on all {n_total} case-study solvents:")
     print(f"  Correct: {model_correct}/{n_total} " f"({model_correct / n_total * 100:.1f}%)")
+    retained = sum(case_agreement)
+    voted_correct = sum(
+        agrees and predicted == reference
+        for agrees, predicted, reference in zip(
+            case_agreement, case_model_classes, case_experimental_classes
+        )
+    )
+    print(f"Voting: retained {retained}/{n_total}; correct {voted_correct}/{retained}")
 
     print(f"\nNearest neighbor samples: {len(neighbor_indices)}")
 

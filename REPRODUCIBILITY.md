@@ -60,6 +60,40 @@ The historical model files produce scikit-learn/XGBoost version warnings
 warnings. The tests verify the reported table and class predictions, not exact
 probability equivalence across library versions.
 
+## Solvent-case regression checks
+
+The aggregate table check above does not validate the separate solvent-series
+claim. Run its checks locally, using the committed model, monomer descriptor
+cache, embeddings and literature lookup:
+
+```bash
+uv sync --locked --python 3.12 --extra testing
+uv run --locked --extra testing pytest tests/test_paper_solvent.py tests/test_api_parity.py -k paper_solvent -v
+```
+
+The expected retained classes and two abstentions are recorded independently of
+the plotting CSV in `tests/fixtures/paper_solvent_cases.json`. Both monomer
+orders are tested. Missing descriptors and unavailable lookup are errors, not
+abstentions; no live API call or new XTB calculation is used.
+
+The same suite checks that the released and full-feature splits assign the
+same targets to the same reactions. All three splits currently fail this
+consistency check. An archived full-feature checkpoint is therefore not a
+controlled solvent-feature ablation until its target provenance is reconciled.
+
+The historical paper-outcome and target-consistency checks still fail. They are
+intentionally neither skipped nor marked `xfail`: the mismatch needs scientific
+reconciliation, not a new expected value copied from the model. The solvent
+plotting script rebuilds descriptors using the API assembler and recomputes
+model/lookup agreement. It raises on missing/non-finite features or model failure
+instead of falling back to historical predictions. The regenerated figure uses
+the supplied r1/r2 values with the current curve classifier (six gradient,
+three random references). Run
+`python 03-experiments/case_studies/solvent/solvent_case_study.py` to rebuild it.
+Figure-feature checks and the new API parity checks pass; this does not restore
+the original paper's historical voting claims. See the
+[diagnosis and suggested manuscript correction](docs/reproducibility/solvent-case-reconciliation.md).
+
 ## Use your own data
 
 For recipes, use the [web tool](https://polycarp.cheminfo.org) or
