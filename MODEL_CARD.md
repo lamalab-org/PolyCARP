@@ -85,8 +85,11 @@ Validation connects statistical performance to chemical use:
   ([saved results](03-experiments/reaction_conditions_comparison/results/comparison_results.json)).
 - **Historical solvent series (reproduction unresolved):** the reported seven
   correct predictions and two abstentions do not reproduce with the released
-  model and current API preprocessing. The figure's saved feature table is
-  incompatible with that model, and the monomer pair (including the benzene,
+  model and current API preprocessing. The figure's historical feature table
+  was incompatible with that model. The regenerated figure now uses complete
+  API-built features and user-supplied ratios classified with the current rules
+  (6/9 correct for the model; voting retains six and matches all six references).
+  These ratios still require source verification. The monomer pair (including the benzene,
   90 °C encoded condition) occurs in training under Minsk's high-dilution
   follow-up. Matching model inputs do not establish identical physical
   experiments: concentration is not represented. Do not treat this as

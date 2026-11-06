@@ -31,9 +31,27 @@ These produce six gradient and three random references, with no alternating
 references. Against the current model/lookup outcomes recorded below, all six
 retained voting predictions match these supplied references, and the three
 random cases abstain. This comparison does not resolve source identity,
-concentration or training overlap. The missing model descriptors still prevent
-regenerating the plot, and the historical paper-claim regression expectations
+concentration or training overlap. The plot has now been regenerated with
+complete API-built descriptors, current classifier/lookup predictions and these
+ratio-derived reference classes. Historical paper-claim regression expectations
 remain unchanged pending scientific reconciliation.
+
+To regenerate the PNG, PDF and feature table locally (requires API, plotting
+and inference dependencies):
+
+```bash
+python 03-experiments/case_studies/solvent/solvent_case_study.py
+```
+
+The script uses committed monomer descriptors and the API feature assembler,
+then recomputes lookup agreement from the model's training split. It preserves
+historical `model_class`, `model_confidence`, `agreement` and `minsk_class`
+columns for comparison. Only `experimental_class` (from r1/r2) and the
+`current_*` result columns describe the regenerated figure. Shape denotes
+predicted class, color correctness, and faded markers denote abstention.
+The model alone matches 6/9 supplied references; voting retains 6/9 and matches
+all six retained references. This is a reanalysis of a historical series with
+training overlap, not an independent prospective validation.
 
 ## What reproduces, and what does not
 
@@ -43,7 +61,7 @@ and coverage is 0.770. This finding concerns the separate historical solvent
 case; it does not invalidate that aggregate reproduction or audit the
 prospective laboratory experiments.
 
-The solvent CSV contains the old saved `model_class`, `minsk_class` and
+The historical solvent CSV contained the saved `model_class`, `minsk_class` and
 `agreement` values, but only six of the released model's 19 required feature
 columns. The previous plotting script caught the resulting error and reused
 `model_class` from that CSV. A newly generated figure could therefore look
@@ -120,8 +138,9 @@ If retaining a transparent limitation paragraph, proposed wording is:
 > in training; matching encoded conditions can conceal differences in dilution
 > that are not represented by the model.
 
-Avoid retaining the old figure with only its caption changed: its predictions,
-reference classes and abstention flags all need a consistent regeneration.
+The regenerated figure now uses consistent predictions, reference classes and
+abstention flags. Its scientific interpretation still requires source-level
+reconciliation as described above.
 
 ## Resolution needed before this draft becomes mergeable
 

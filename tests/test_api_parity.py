@@ -107,6 +107,33 @@ def client():
 @pytest.mark.parametrize(
     "case", PAPER_SOLVENT_CASES["cases"], ids=lambda case: case["solvent_name"]
 )
+def test_regenerated_solvent_plot_matches_api(client, predictor, case):
+    """The plotted features, classifier and agreement must use the live API logic."""
+    table = pd.read_csv(
+        ROOT / "03-experiments/case_studies/solvent/case_study_features.csv"
+    ).set_index("solvent_name")
+    row = table.loc[case["solvent_name"]]
+    payload = {**PAPER_SOLVENT_CASES["reaction"], "solvent_smiles": case["solvent_smiles"]}
+    response = client.post("/preprocess_all", json=payload)
+    assert response.status_code == 200, response.text
+    prepared = response.json()
+    assert prepared["success"], prepared.get("error")
+    for feature in predictor.features:
+        assert row[feature] == pytest.approx(prepared["features"][feature], abs=1e-10)
+    response = client.post("/predict", json={"features": prepared["features"]})
+    assert response.status_code == 200, response.text
+    predicted = response.json()
+    assert row["current_model_class"] == predicted["predicted_class"]
+    assert row["current_model_confidence"] == pytest.approx(predicted["confidence"])
+    assert row["current_lookup_class"] == prepared["lookup_class"]
+    assert bool(row["current_agreement"]) == (
+        predicted["predicted_class"] == prepared["lookup_class"]
+    )
+
+
+@pytest.mark.parametrize(
+    "case", PAPER_SOLVENT_CASES["cases"], ids=lambda case: case["solvent_name"]
+)
 @pytest.mark.parametrize("reverse_monomers", [False, True], ids=["forward", "reverse"])
 def test_paper_solvent_outcome_matches_published_case(
     client, predictor, case, reverse_monomers, monkeypatch

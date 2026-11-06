@@ -1,7 +1,7 @@
 """Fail visibly if the solvent figure cannot be reproduced from its artifacts.
 
-The committed historical table currently lacks 13 of the model's 19 features.
-That is a genuine reproduction failure, not an expected failure to skip/xfail.
+The rebuilt table supplies complete features and ratio-derived references.
+Historical saved output columns remain separately guarded for comparison.
 """
 
 import json
