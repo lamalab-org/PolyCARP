@@ -116,6 +116,28 @@ across the full test set, but do not guarantee solvent sensitivity within this
 particular monomer pair. Inspect actual probability changes as well as the
 winning class.
 
+A follow-up local API diagnostic confirms that all 19 required descriptors
+are present and finite for these nine inputs. Only `solvent_logp` and
+`solvent_FractionCSP3` vary; the other 17 inputs remain fixed. The API's returned
+probabilities form four groups (percentages rounded here):
+
+| Solvents | Alternating | Random | Gradient |
+|---|---:|---:|---:|
+| Benzene, o-dichlorobenzene, benzonitrile | 0.97 | 17.09 | 81.93 |
+| Dioxane, bis(2-methoxyethyl) ether | 3.91 | 16.59 | 79.50 |
+| Ethanol, 2-(2-methoxyethoxy)ethanol, DMSO | 1.46 | 17.01 | 81.53 |
+| Methanol | 1.55 | 19.99 | 78.46 |
+
+This is a weak output response to the solvent sweep, not a frozen API result:
+some probabilities change, but none changes the winning class. Identical
+probability vectors for chemically distinct solvents strengthen the reason to
+audit the learned solvent response. They do not prove a feature-computation
+bug, determine the correct reference classes, or establish that richer
+descriptors will improve generalization. These measurements used the same
+locked local environment, released bundle and cached descriptors as the new
+paper-case checks; they are diagnostic observations, not new regression targets
+that require future models to retain the all-gradient outcome.
+
 ### Scientific reconciliation
 
 1. Read the original February table and record each solvent's identity,
