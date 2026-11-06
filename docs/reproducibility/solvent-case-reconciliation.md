@@ -94,6 +94,30 @@ reference classes and abstention flags all need a consistent regeneration.
 
 ## Resolution needed before this draft becomes mergeable
 
+### Diagnostic sequence for the predominantly gradient predictions
+
+First determine the reference classes from the original experimental ratios.
+Nine solvent conditions for one pair are not nine independent monomer-pair
+tests. Substantial changes in a composition curve may remain within one broad
+class; if the final reference classes are all gradient, this is unsuitable as
+a demonstration of class switching rather than evidence of model collapse.
+
+If verified reference classes differ, trace the complete input vectors and
+class-probability changes before modifying the model. The released 19-feature
+model represents solvent only through logP and fraction of sp³ carbons. Its
+remaining 17 features stay fixed in this solvent sweep. Hydrogen-bonding and
+polarity descriptors, concentration and interaction features are therefore
+candidates to evaluate, not established fixes. Check their benefit on separate
+condition/solvent groups and preserve an untouched final test set. Avoid tuning
+class weights simply to force diverse labels on this one series.
+
+The aggregate results rule out a classifier that always predicts gradient
+across the full test set, but do not guarantee solvent sensitivity within this
+particular monomer pair. Inspect actual probability changes as well as the
+winning class.
+
+### Scientific reconciliation
+
 1. Read the original February table and record each solvent's identity,
    temperature, concentrations, ratio values, uncertainties and monomer order.
    Keep the December high-dilution measurements as a distinct source.
