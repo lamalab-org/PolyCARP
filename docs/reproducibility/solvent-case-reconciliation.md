@@ -187,6 +187,11 @@ model because its outputs look closer to the old figure.
 ### Diagnostic sequence for the predominantly gradient predictions
 
 First determine the reference classes from the original experimental ratios.
+The supplied ratios now recorded above give six gradient and three random
+classes under the current rules: the model misses those three random cases,
+while lookup disagreement causes voting to abstain on all three. Thus these
+supplied data already identify a specific limitation beyond the stale figure;
+source-level verification and solvent-identity reconciliation remain pending.
 Nine solvent conditions for one pair are not nine independent monomer-pair
 tests. Substantial changes in a composition curve may remain within one broad
 class; if the final reference classes are all gradient, this is unsuitable as
