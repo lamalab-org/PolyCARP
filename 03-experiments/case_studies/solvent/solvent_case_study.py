@@ -37,6 +37,7 @@ sys.path.insert(
     0, str(Path(PROJECT_ROOT) / "02-reactivity-prediction" / "copol_prediction" / "analysis")
 )
 
+from copol_prediction.mayo_lewis_classification import classify_reactivity_curve
 from plot_config import setup_plot_style
 
 from copolpredictor.case_studies import case_study_features
@@ -225,8 +226,15 @@ def main():
     df_case = pd.read_csv(CASE_STUDY_PATH)
     print(f"Case study data shape: {df_case.shape}")
 
-    # Extract case study info
-    case_minsk_classes = df_case["minsk_class"].tolist()
+    # Derive reference labels from measured ratios with the training classifier.
+    # minsk_class in the CSV is historical and is not used as ground truth.
+    ratios = case_study_features(df_case, ["r1", "r2"])
+    if (ratios < 0).any().any():
+        raise ValueError("Experimental reactivity ratios must be nonnegative")
+    case_experimental_classes = [
+        classify_reactivity_curve(r1, r2)["class_id"]
+        for r1, r2 in ratios.itertuples(index=False, name=None)
+    ]
     # Optional: whether Final Model agrees with Lookup (voting definition)
     # If missing, treat all as agreement=True.
     case_agreement = (
@@ -368,13 +376,13 @@ def main():
         print(f"  {i}: {s['name']} (min_sim={s['min_sim']:.3f})")
 
     # Reorder case study data to match new solvent order (by matching names)
-    reordered_minsk_classes = [0] * len(original_case_solvents)
+    reordered_experimental_classes = [0] * len(original_case_solvents)
     reordered_model_classes = [0] * len(original_case_solvents)
     reordered_agreement = [True] * len(original_case_solvents)
 
     for old_idx, old_name in enumerate(original_case_solvents):
         new_idx = reordered_solvents.index(old_name)
-        reordered_minsk_classes[new_idx] = case_minsk_classes[old_idx]
+        reordered_experimental_classes[new_idx] = case_experimental_classes[old_idx]
         reordered_model_classes[new_idx] = case_model_classes[old_idx]
         reordered_agreement[new_idx] = bool(case_agreement[old_idx])
 
@@ -458,7 +466,7 @@ def main():
     for old_idx in visible_indices:
         new_x = old_to_new_pos[old_idx]
         pred_class = reordered_model_classes[old_idx]  # same as baseline when agree
-        is_correct = reordered_minsk_classes[old_idx] == pred_class
+        is_correct = reordered_experimental_classes[old_idx] == pred_class
         agrees_with_lookup = bool(reordered_agreement[old_idx])
         color = CLASS_COLORS[0] if is_correct else CLASS_COLORS[2]
         marker = CLASS_MARKERS[pred_class]
@@ -881,7 +889,7 @@ def main():
     # Performance (final model only, no Lookup)
     n_total = len(case_solvents_ordered)
     model_correct = sum(
-        1 for i in range(n_total) if reordered_minsk_classes[i] == reordered_model_classes[i]
+        1 for i in range(n_total) if reordered_experimental_classes[i] == reordered_model_classes[i]
     )
 
     print(f"\nPerformance of final model on all {n_total} case-study solvents:")

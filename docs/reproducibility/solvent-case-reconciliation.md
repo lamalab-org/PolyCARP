@@ -4,6 +4,37 @@ Status: proposed correction for scientific review, 6 November 2026. The code
 changes prevent silent substitution of old predictions. They do not establish
 new experimental ground truth or repair the model's solvent sensitivity.
 
+## Supplied experimental ratios (6 November 2026)
+
+The user supplied the following ratios for the nine existing solvent rows.
+They are stored as `r1` (acrylamide) and `r2` (styrene) in
+`case_study_features.csv`; this monomer order is an assumption, and the values
+have not been independently checked against the original source table.
+The plot now derives reference classes from these ratios using
+`classify_reactivity_curve` with the same defaults as training. The CSV's
+`minsk_class`, model outputs and agreement flags remain historical artifacts;
+the old reference labels are no longer used for plot correctness.
+
+| Solvent | r1 | r2 | Current curve class |
+|---|---:|---:|---|
+| Benzene | 12.5 | 0.25 | gradient |
+| o-Dichlorobenzene | 12.5 | 0.25 | gradient |
+| Benzonitrile | 2.4 | 1.35 | random |
+| Dioxane | 1.38 | 1.27 | random |
+| Bis(2-methoxyethyl) ether | 1.09 | 1.40 | random |
+| Ethanol | 0.30 | 1.44 | gradient |
+| 2-(2-Methoxyethoxy)ethanol | 0.27 | 1.66 | gradient |
+| DMSO | 0.16 | 2.01 | gradient |
+| Methanol | 0.20 | 1.05 | gradient |
+
+These produce six gradient and three random references, with no alternating
+references. Against the current model/lookup outcomes recorded below, all six
+retained voting predictions match these supplied references, and the three
+random cases abstain. This comparison does not resolve source identity,
+concentration or training overlap. The missing model descriptors still prevent
+regenerating the plot, and the historical paper-claim regression expectations
+remain unchanged pending scientific reconciliation.
+
 ## What reproduces, and what does not
 
 The released aggregate train/test table reproduces within its existing ±0.005

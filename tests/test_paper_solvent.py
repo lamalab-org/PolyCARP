@@ -37,6 +37,33 @@ def test_paper_solvent_table_supplies_every_model_feature():
     case_study_features(pd.read_csv(SOLVENT_TABLE), metadata["feature_columns"])
 
 
+def test_supplied_solvent_ratios_use_current_curve_classes():
+    """User-supplied ratios replace historical class labels as reference inputs."""
+    import sys
+
+    sys.path.insert(0, str(ROOT / "02-reactivity-prediction"))
+    from copol_prediction.mayo_lewis_classification import classify_reactivity_curve
+
+    expected = {
+        "Benzene": (12.5, 0.25, "gradient"),
+        "o-Dichlorobenzene": (12.5, 0.25, "gradient"),
+        "Benzonitrile": (2.4, 1.35, "random"),
+        "Dioxane": (1.38, 1.27, "random"),
+        "Bis(2-methoxyethyl) ether": (1.09, 1.40, "random"),
+        "Ethanol": (0.30, 1.44, "gradient"),
+        "2-(2-Methoxyethoxy)ethanol": (0.27, 1.66, "gradient"),
+        "DMSO": (0.16, 2.01, "gradient"),
+        "Methanol": (0.20, 1.05, "gradient"),
+    }
+    table = pd.read_csv(SOLVENT_TABLE).set_index("solvent_name")
+    assert set(table.index) == set(expected)
+    for solvent, (r1, r2, label) in expected.items():
+        row = table.loc[solvent]
+        assert (row["r1"], row["r2"]) == (r1, r2)
+        assert classify_reactivity_curve(row["r1"], row["r2"])["class_name"] == label
+        assert classify_reactivity_curve(row["r2"], row["r1"])["class_name"] == label
+
+
 def test_missing_descriptor_is_rejected_even_when_saved_predictions_exist():
     frame = pd.DataFrame({"temperature": [90.0], "model_class": [1]})
     with pytest.raises(ValueError, match="missing 1 of 2 required columns: homo_1"):
