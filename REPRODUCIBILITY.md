@@ -60,6 +60,29 @@ The historical model files produce scikit-learn/XGBoost version warnings
 warnings. The tests verify the reported table and class predictions, not exact
 probability equivalence across library versions.
 
+## Solvent-case regression checks
+
+The aggregate table check above does not validate the separate solvent-series
+claim. Run its checks locally, using the committed model, monomer descriptor
+cache, embeddings and literature lookup:
+
+```bash
+uv sync --locked --python 3.12 --extra testing
+uv run --locked --extra testing pytest tests/test_paper_solvent.py tests/test_api_parity.py -k paper_solvent -v
+```
+
+The expected retained classes and two abstentions are recorded independently of
+the plotting CSV in `tests/fixtures/paper_solvent_cases.json`. Both monomer
+orders are tested. Missing descriptors and unavailable lookup are errors, not
+abstentions; no live API call or new XTB calculation is used.
+
+These checks currently fail on the committed scientific artifacts. They are
+intentionally neither skipped nor marked `xfail`: the mismatch needs scientific
+reconciliation, not a new expected value copied from the model. The solvent
+plotting script now raises on missing/non-finite features or model failure
+instead of falling back to historical predictions. See the
+[diagnosis and suggested manuscript correction](docs/reproducibility/solvent-case-reconciliation.md).
+
 ## Use your own data
 
 For recipes, use the [web tool](https://polycarp.cheminfo.org) or

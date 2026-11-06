@@ -39,6 +39,7 @@ sys.path.insert(
 
 from plot_config import setup_plot_style
 
+from copolpredictor.case_studies import case_study_features
 from copolpredictor.inference import CopolymerPredictor
 
 # Paths (use final model bundle = newest model)
@@ -232,48 +233,13 @@ def main():
         df_case["agreement"].tolist() if "agreement" in df_case.columns else [True] * len(df_case)
     )
 
-    # Load model and make predictions
+    # Fail rather than silently substituting historical predictions when the
+    # model or descriptor schema changes. Such a plot is not a reproduction.
     print(f"\nLoading model from {args.model_path}...")
-    try:
-        predictor = CopolymerPredictor(args.model_path)
-        print(f"  ✓ Model loaded ({len(predictor.features)} features)")
-
-        # Prepare features for prediction
-        # Get required features from model
-        required_features = predictor.features
-
-        # Check which features are available in df_case
-        missing_features = set(required_features) - set(df_case.columns)
-        if missing_features:
-            print(f"  ⚠️  Warning: Missing features: {missing_features}")
-            print("   Attempting to continue with available features...")
-            available_features = [f for f in required_features if f in df_case.columns]
-            if len(available_features) < len(required_features) * 0.8:
-                raise ValueError(f"Too many missing features: {len(missing_features)} missing")
-            required_features = available_features
-
-        # Prepare feature matrix
-        X_case = df_case[required_features].copy()
-
-        # Fill NaN values if any
-        if X_case.isna().sum().sum() > 0:
-            print("  ⚠️  Warning: Found NaN values, filling with 0")
-            X_case = X_case.fillna(0)
-
-        # Make predictions
-        print("  🔮 Making predictions...")
-        y_pred = predictor.predict(X_case)
-        case_model_classes = y_pred.tolist()
-
-        print(f"  ✓ Predictions made: {case_model_classes}")
-
-    except Exception as e:
-        print(f"  ✗ Error loading model or making predictions: {e}")
-        print("  Falling back to predictions from CSV...")
-        import traceback
-
-        traceback.print_exc()
-        case_model_classes = df_case["model_class"].tolist()
+    predictor = CopolymerPredictor(args.model_path)
+    X_case = case_study_features(df_case, predictor.features)
+    case_model_classes = predictor.predict(X_case).tolist()
+    print(f"  ✓ Predictions made: {case_model_classes}")
 
     print(f"\nCase study solvents: {original_case_solvents}")
 

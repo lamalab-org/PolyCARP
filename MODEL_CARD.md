@@ -83,8 +83,15 @@ Validation connects statistical performance to chemical use:
   raises mean within-pair balanced accuracy from 0.551 to 0.635 and macro recall
   from 0.689 to 0.767, with coverage increasing from 0.892 to 0.946
   ([saved results](03-experiments/reaction_conditions_comparison/results/comparison_results.json)).
-- **Historical solvent series:** seven correct predictions and two abstentions
-  across nine solvents for a pair excluded from training.
+- **Historical solvent series (reproduction unresolved):** the reported seven
+  correct predictions and two abstentions do not reproduce with the released
+  model and current API preprocessing. The figure's saved feature table is
+  incompatible with that model, and the monomer pair (including the benzene,
+  90 °C encoded condition) occurs in training under Minsk's high-dilution
+  follow-up. Matching model inputs do not establish identical physical
+  experiments: concentration is not represented. Do not treat this as
+  validation on an unseen monomer pair. See the
+  [reconciliation note](docs/reproducibility/solvent-case-reconciliation.md).
 - **Prospective synthesis:** two of three new laboratory copolymerizations match
   the predicted architecture.
 - **Interpretation:** SHAP and permutation analyses assess feature contributions;
