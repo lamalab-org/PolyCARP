@@ -76,7 +76,12 @@ the plotting CSV in `tests/fixtures/paper_solvent_cases.json`. Both monomer
 orders are tested. Missing descriptors and unavailable lookup are errors, not
 abstentions; no live API call or new XTB calculation is used.
 
-The historical paper-outcome checks still fail on the current model. They are
+The same suite checks that the released and full-feature splits assign the
+same targets to the same reactions. All three splits currently fail this
+consistency check. An archived full-feature checkpoint is therefore not a
+controlled solvent-feature ablation until its target provenance is reconciled.
+
+The historical paper-outcome and target-consistency checks still fail. They are
 intentionally neither skipped nor marked `xfail`: the mismatch needs scientific
 reconciliation, not a new expected value copied from the model. The solvent
 plotting script rebuilds descriptors using the API assembler and recomputes

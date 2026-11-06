@@ -142,6 +142,46 @@ The regenerated figure now uses consistent predictions, reference classes and
 abstention flags. Its scientific interpretation still requires source-level
 reconciliation as described above.
 
+## Checkpoint and target-definition audit
+
+The released bundle, the local development checkout, and the files at deployed
+backend commit `edab409763f537562703e07ac6fa9ff46a3dfb79` have identical SHA-256
+hashes for `model.joblib`, `model.xgb.json`, `calibration.joblib` and `meta.json`.
+For `model.joblib`, the hash is
+`86bb6a7de5ed323cd519a97537591e16732071ff5bbfa0401c815faf9723ca92`.
+The live `/model/info` endpoint reports the matching 19-feature schema and
+creation time `2026-04-28T08:21:57.382754Z`. The local benzene probability vector
+also matches the captured live response. This strongly supports consistency
+with the current release. The running service does not expose an artifact
+digest, so a byte-for-byte runtime attestation remains unavailable.
+
+This does **not** identify which checkpoint produced the historical solvent
+CSV. The CSV was committed on 24 February; the main checkpoint at that commit
+was created on 19 February and retained solvent TPSA and HBD alongside logP
+and fraction sp³. Saved predictions have no checkpoint manifest. Recovering
+their provenance requires the historical model, preprocessing, class rules
+and lookup pool together, not swapping the current model to an older file.
+
+An archived 59-feature model, created on 28 April at 07:38, produces different
+class indices on the solvent series. It is **not a clean feature ablation**:
+the associated `data_splits_full_features` artifacts disagree with the
+released target labels on identical records:
+
+| Split | Unique matching records | Different target labels |
+|---|---:|---:|
+| Train | 4,738 | 3,946 |
+| Validation | 678 | 558 |
+| Test | 1,356 | 1,095 |
+
+Exact duplicate key/label rows for swapped identical monomers are counted once.
+Training reaction 443 is class 1 in the full-feature split and class 2 in the
+released split. The archived model returns class 1 for eight solvent inputs
+and class 0 for ethanol, but interpreting these indices using today's class
+names would be unjustified without verifying its training-target provenance.
+The new split-consistency checks expose all three mismatches. Retrain feature
+ablations from one verified target definition; do not deploy the archived
+model because its outputs look closer to the old figure.
+
 ## Resolution needed before this draft becomes mergeable
 
 ### Diagnostic sequence for the predominantly gradient predictions
@@ -187,6 +227,42 @@ descriptors will improve generalization. These measurements used the same
 locked local environment, released bundle and cached descriptors as the new
 paper-case checks; they are diagnostic observations, not new regression targets
 that require future models to retain the all-gradient outcome.
+
+### Candidate improvements and weak supervision
+
+First compare the selected 19 features against a model that retains the
+available solvent HBD, HBA and TPSA features, using identical verified targets,
+splits and comparable tuning. This is a proposed ablation, not a demonstrated
+repair. Global feature selection may miss features useful for within-pair
+condition changes; include a separate solvent-response evaluation.
+
+If this is insufficient, consider solvent interaction features such as
+[Kamlet–Taft parameters](https://goldbook.iupac.org/terms/view/K03367) for
+hydrogen-bond donation, acceptance and dipolarity/polarizability, crossed with
+appropriate monomer descriptors. Record concentration where the source permits;
+do not invent it for missing records. These choices are motivated by the Minsk
+studies, but need independent validation.
+
+Weak supervision is a possible second stage, preferably from independent
+literature evidence about *changes in composition curves*, not a universal
+rule that a polar/protic solvent implies a particular architecture. Candidate
+sources include extracted feed/composition points, uncertainty intervals on
+reported ratios, and explicit within-study comparisons at matched conditions.
+Use these as uncertain continuous constraints or pairwise ordering targets
+where possible. A probabilistic label model such as
+[Snorkel](https://www.vldb.org/pvldb/vol11/p269-ratner.pdf) is an option for
+combining noisy discrete labeling functions while accounting for dependencies;
+multiple extractions of one paper must not count as independent evidence.
+
+Benchmark (a) corrected current features, (b) richer solvent features, and
+(c) richer features plus weak supervision on untouched source/condition groups.
+Use continuous curve descriptors alongside class metrics to detect real solvent
+response that remains inside one class. Match the supervision to the supported
+observable: a composition curve alone does not uniquely establish polymer
+sequence architecture. If Minsk is used to develop or train the revised model,
+report it as a development case and use a different independent solvent series
+for final validation. Weak labels cannot recover an omitted condition that the
+model never receives.
 
 ### Scientific reconciliation
 

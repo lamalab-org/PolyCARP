@@ -64,6 +64,35 @@ def test_supplied_solvent_ratios_use_current_curve_classes():
         assert classify_reactivity_curve(row["r2"], row["r1"])["class_name"] == label
 
 
+@pytest.mark.parametrize("split", ["train", "val", "test"])
+def test_feature_selection_splits_use_the_same_target_definition(split):
+    """A richer-feature model is not a valid ablation if its target labels differ."""
+    artifacts = MODEL_META.parent.parent
+    keys = ["reaction_id", "monomer1_smiles", "monomer2_smiles"]
+    columns = keys + ["r_product_class"]
+    # Identical monomers can produce duplicate swapped rows. Collapse only
+    # identical key/label records; conflicting labels still fail the 1:1 merge.
+    released = pd.read_csv(artifacts / "data_splits" / f"{split}.csv")[columns].drop_duplicates()
+    full = pd.read_csv(artifacts / "data_splits_full_features" / f"{split}.csv")[
+        columns
+    ].drop_duplicates()
+    compared = released.merge(
+        full,
+        on=keys,
+        how="outer",
+        suffixes=("_released", "_full"),
+        indicator=True,
+        validate="one_to_one",
+    )
+    assert (compared["_merge"] == "both").all(), "Feature ablation must use the same split records"
+    mismatches = compared["r_product_class_released"] != compared["r_product_class_full"]
+    assert not mismatches.any(), (
+        f"{split}: {int(mismatches.sum())}/{len(compared)} records have different targets "
+        "between released and full-feature splits. Regenerate targets consistently "
+        "before comparing solvent sensitivity; old class indices are not equivalent."
+    )
+
+
 def test_missing_descriptor_is_rejected_even_when_saved_predictions_exist():
     frame = pd.DataFrame({"temperature": [90.0], "model_class": [1]})
     with pytest.raises(ValueError, match="missing 1 of 2 required columns: homo_1"):

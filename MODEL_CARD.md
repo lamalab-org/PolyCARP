@@ -98,7 +98,10 @@ Validation connects statistical performance to chemical use:
 - **Prospective synthesis:** two of three new laboratory copolymerizations match
   the predicted architecture.
 - **Interpretation:** SHAP and permutation analyses assess feature contributions;
-  retrieved experiments provide source-linked chemical precedents.
+  retrieved experiments provide source-linked chemical precedents. The archived
+  full-feature splits have different target labels from the released splits;
+  comparisons between their checkpoints require reconciliation before being
+  interpreted as feature ablations (see the reconciliation note above).
 
 ## Scope
 
